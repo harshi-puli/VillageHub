@@ -1,5 +1,5 @@
-### VillageHub
-# 1. Project Overview
+# VillageHub
+### 1. Project Overview
 Project Title
 Village Hub: A centralized app for all residents to manage all community amenities and communication.
 Difficulty Level
@@ -12,15 +12,15 @@ APIs
 Database
 UI/UX
 
-# 2. Project Description
+### 2. Project Description
 This app allows residents of tiny village spirit’s tiny home communities to efficiently book shared amenities and share information. Users and Admin can communicate with one another via users sending feedback/requests about current services and Admin posting community announcements. Further, users can update other users on essential information through community posts.
 This app is meant to be designed to exist within the lifestyle space as it is meant to be a service that makes the lives of residents more efficient.
 
-# 3. Problem & Motivation
+### 3. Problem & Motivation
 Problem Statement
 Community spaces could get disorganized because residents may try using spaces at the same time, and emails with announcements and feedback may go unchecked or checked late.
 
-# 4. Project Goals & Scope
+### 4. Project Goals & Scope
 Goals
 Functional demo
 Usable UI
@@ -29,14 +29,14 @@ Learning outcomes
 Non-Goals
 Perfect features
 
-# 5. Tech Stack
+### 5. Tech Stack
 List of Tools
 Give a list of frameworks/libraries used by each subteam
 Example
 Frontend: React, TailwindCSS, Next.js
 Backend: Flask, Firebase
 
-# 6. Features & Deliverables
+### 6. Features & Deliverables
 Core Features
 Feature Name: Homepage/Dashboard
 What it does:
@@ -70,7 +70,7 @@ Community posts social-media aspect
 Dark mode/Light mode
 Chatbot
 
-# 7. Timeline & Milestones
+### 7. Timeline & Milestones
 High-Level Timeline
 Break the semester into phases:
 Onboarding & setup - Week 1
@@ -86,11 +86,11 @@ Testing & polish by Week 10
 Demo-ready by Week 12
 Dates might vary based on client needs.
 
-# 8. Team Structure & Expectations
+### 8. Team Structure & Expectations
 Team Size
 8-10
 
-# 9. Risks & Challenges
+### 9. Risks & Challenges
 New technologies
 Team experience gaps
 
