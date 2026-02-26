@@ -11,7 +11,7 @@ Backend
 APIs
 Database
 UI/UX
-
+hiii
 ### 2. Project Description
 This app allows residents of tiny village spirit’s tiny home communities to efficiently book shared amenities and share information. Users and Admin can communicate with one another via users sending feedback/requests about current services and Admin posting community announcements. Further, users can update other users on essential information through community posts.
 This app is meant to be designed to exist within the lifestyle space as it is meant to be a service that makes the lives of residents more efficient.
