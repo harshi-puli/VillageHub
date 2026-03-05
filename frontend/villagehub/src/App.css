@@ -5,19 +5,16 @@
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  background-color: rgb(253, 253, 253);
 }
 
+.greeting-message {
+  color: black
+}
+
+
+/*react stuff you can use as a guideline otherwise don't pay attention*/
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -40,3 +37,4 @@
 .read-the-docs {
   color: #888;
 }
+
