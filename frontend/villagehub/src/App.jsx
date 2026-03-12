@@ -18,7 +18,7 @@ function App() {
         category: 'general'
       })
       setResult(announcement)
-      console.log('✅ Success:', announcement)
+      console.log('✅ Success:', announcement) //makes an announcement!!
     } catch (err) {
       setError(err.message)
       console.error('❌ Error:', err)
@@ -31,7 +31,7 @@ function App() {
         <h1 className="greeting-message">Welcome folks.</h1>
         <img src={logo} alt="Description of my image" onClick={handleImageClick} />
         <p>test that announcement!</p>
-        <button onClick={testAddAnnouncement}>Test addAnnouncement</button>
+        <button onClick={testAddAnnouncement}>Test addAnnouncement</button> 
         {result && <pre style={{ background: '#d4edda', padding: '10px' }}>{JSON.stringify(result, null, 2)}</pre>}
         {error && <pre style={{ background: '#f8d7da', padding: '10px' }}>{error}</pre>}
       </div>

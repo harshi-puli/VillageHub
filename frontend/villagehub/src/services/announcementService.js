@@ -14,7 +14,7 @@ import { db, auth } from '../firebase';
 
 // Get the current user's ID
 const getCurrentUserId = () => {
-  return '6767';
+  return '6769'; //lol
   /*
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
@@ -39,7 +39,7 @@ export const addAnnouncement = async (announcementData) => {
     notified: false
   };
 
-  const announcementRef = collection(db, 'users', userId, 'announcements');
+  const announcementRef = collection(db, 'announcements');
   const docRef = await addDoc(announcementRef, announcement);
 
   return { id: docRef.id, ...announcement };
