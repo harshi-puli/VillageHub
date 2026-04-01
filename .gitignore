@@ -7,3 +7,24 @@
 venv
 hub
 .hub
+
+# Node / React / Vite
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+.vite/
+
+# Expo / React Native
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/web-build/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
