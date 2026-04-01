@@ -13,6 +13,7 @@ function App() {
       <div>
         <h1 className="greeting-message">Admin Dashboard</h1>
          <button onClick={logoutResident}>Log Out</button>
+         <p>HIIHIHIHIHIHI</p>
       </div>
     </>
   )
