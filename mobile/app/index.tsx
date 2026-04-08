@@ -37,7 +37,7 @@ export default function IndexScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.greeting}>Welcome folks.</Text>
-      <Image source={require('@/assets/images/icon.png')} style={styles.logo} />
+      <Image source={require('@/assets/images/logo.png')} style={styles.logo} />
       <Text style={styles.sub}>Test that announcement!</Text>
 
       <View style={styles.row}>
@@ -65,6 +65,7 @@ export default function IndexScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#f5f8daff',
     flex: 1,
     padding: 20,
     justifyContent: 'center',
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
   },
   sub: {
     textAlign: 'center',
-    color: '#555',
+    color: '#42411bff',
   },
   logo: {
     width: 96,
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#49bbebff',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,

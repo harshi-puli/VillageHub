@@ -24,6 +24,8 @@ export default function AdminDashboardScreen() {
     router.replace('/login');
   };
 
+  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Admin Dashboard</Text>
@@ -37,6 +39,7 @@ export default function AdminDashboardScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#f9fdbfff',
     flex: 1,
     padding: 20,
     justifyContent: 'center',
