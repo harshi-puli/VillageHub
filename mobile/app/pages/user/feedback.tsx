@@ -24,8 +24,18 @@ function Sidebar() {
 }
 
 export default function feedbackScreen() {
+  const { user, profile, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <View style={styles.container}>
+      {/* Hamburger Button */}
+      <Pressable style={styles.hamburger} onPress={() => setSidebarOpen(!sidebarOpen)}>
+        <Text style={styles.hamburgerText}>☰</Text>
+      </Pressable>
+
+      {/* Sidebar */}
+      {sidebarOpen && <Sidebar />}
       <Text style={styles.title}>Feedback</Text>
     </View>
   );
