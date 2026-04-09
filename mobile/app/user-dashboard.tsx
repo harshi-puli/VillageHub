@@ -13,6 +13,26 @@ import { useAuth } from '@/state/auth';
 import { logoutResident } from '@/services/authService';
 import { updateAnnouncement } from '@/services/announcementService';
 
+function Sidebar() {
+  return (
+    <View style={styles.sidebar}>
+      <Text style={styles.sidebarTitle}>Resident Panel</Text>
+      <Pressable onPress={() => router.push('/user-dashboard')}>
+        <Text style={styles.sidebarItem}>Home</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/feedback')}>
+        <Text style={styles.sidebarItem}>Feedback</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/bookings')}>
+        <Text style={styles.sidebarItem}>Bookings</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/chores')}>
+        <Text style={styles.sidebarItem}>Chores</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function UserDashboardScreen() {
   const { user, loading } = useAuth();
 
@@ -22,6 +42,8 @@ export default function UserDashboardScreen() {
   const [updateResult, setUpdateResult] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -65,6 +87,13 @@ export default function UserDashboardScreen() {
       style={styles.scroll}
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled">
+
+      {/*sidebar*/}
+      <Pressable style={styles.hamburger} onPress={() => setSidebarOpen(!sidebarOpen)}>
+        <Text style={styles.hamburgerText}>☰</Text>
+      </Pressable>
+      {sidebarOpen && <Sidebar />}
+
       <Text style={styles.title}>User Dashboard</Text>
 
       <Text style={styles.sectionLabel}>Test updateAnnouncement</Text>
@@ -129,6 +158,37 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
     paddingBottom: 32,
+  },
+  hamburger: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  hamburgerText: {
+    fontSize: 28,
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 220,
+    backgroundColor: '#1a1a2e',
+    padding: 40,
+    zIndex: 9,
+    gap: 20,
+  },
+  sidebarTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  sidebarItem: {
+    color: 'white',
+    fontSize: 16,
+    paddingVertical: 8,
   },
   title: {
     fontSize: 28,

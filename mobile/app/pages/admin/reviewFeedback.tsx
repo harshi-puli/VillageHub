@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/state/auth';
-import { logoutResident } from '@/services/authService';
 
 function Sidebar() {
   return (
@@ -24,37 +23,10 @@ function Sidebar() {
   );
 }
 
-export default function AdminDashboardScreen() {
-  const { user, profile, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) { router.replace('/login'); return; }
-    if (profile && profile.isAdmin !== true) router.replace('/user-dashboard');
-  }, [loading, user, profile]);
-
-  const onLogout = async () => {
-    await logoutResident();
-    router.replace('/login');
-  };
-
+export default function reviewFeedbackScreen() {
   return (
     <View style={styles.container}>
-      {/* Hamburger Button */}
-      <Pressable style={styles.hamburger} onPress={() => setSidebarOpen(!sidebarOpen)}>
-        <Text style={styles.hamburgerText}>☰</Text>
-      </Pressable>
-
-      {/* Sidebar */}
-      {sidebarOpen && <Sidebar />}
-
-      {/* Your existing content stays exactly the same */}
-      <Text style={styles.title}>Admin Dashboard</Text>
-      <Pressable style={styles.button} onPress={onLogout}>
-        <Text style={styles.buttonText}>Log Out</Text>
-      </Pressable>
-      <Text style={styles.p}>HIIHIHIHIHIHI</Text>
+      <Text style={styles.title}>Feedback</Text>
     </View>
   );
 }

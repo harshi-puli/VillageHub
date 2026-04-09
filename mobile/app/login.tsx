@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: 'white',
     alignItems: 'center',
-    width: 500
   },
   primaryButton: {
     backgroundColor: '#2595ebff',
