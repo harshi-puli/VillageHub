@@ -108,6 +108,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#f9fdbfff',
     flex: 1,
     padding: 20,
     justifyContent: 'center',
@@ -129,9 +130,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: 'white',
+    alignItems: 'center',
   },
   primaryButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#2595ebff',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#2563eb',
+    color: '#2595ebff',
     fontWeight: '600',
   },
 });

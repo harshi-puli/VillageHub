@@ -1,12 +1,49 @@
-import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 
 import { useAuth } from '@/state/auth';
 import { logoutResident } from '@/services/authService';
+import { updateAnnouncement } from '@/services/announcementService';
+
+function Sidebar() {
+  return (
+    <View style={styles.sidebar}>
+      <Text style={styles.sidebarTitle}>Resident Panel</Text>
+      <Pressable onPress={() => router.push('/user-dashboard')}>
+        <Text style={styles.sidebarItem}>Home</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/feedback')}>
+        <Text style={styles.sidebarItem}>Feedback</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/bookings')}>
+        <Text style={styles.sidebarItem}>Bookings</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push('./pages/user/chores')}>
+        <Text style={styles.sidebarItem}>Chores</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export default function UserDashboardScreen() {
   const { user, loading } = useAuth();
+
+  const [announcementId, setAnnouncementId] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -18,27 +55,166 @@ export default function UserDashboardScreen() {
     router.replace('/login');
   };
 
+  const onTestUpdate = async () => {
+    setUpdateResult(null);
+    setUpdateError(null);
+    const id = announcementId.trim();
+    if (!id) {
+      setUpdateError('Enter the Firestore document ID for the announcement.');
+      return;
+    }
+    const updates: { title?: string; description?: string } = {};
+    if (editTitle.trim()) updates.title = editTitle.trim();
+    if (editDescription.trim()) updates.description = editDescription.trim();
+    if (Object.keys(updates).length === 0) {
+      setUpdateError('Fill in at least New title or New description.');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const res = await updateAnnouncement(id, updates);
+      setUpdateResult(JSON.stringify(res, null, 2));
+    } catch (e: unknown) {
+      setUpdateError(e instanceof Error ? e.message : 'Update failed');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled">
+
+      {/*sidebar*/}
+      <Pressable style={styles.hamburger} onPress={() => setSidebarOpen(!sidebarOpen)}>
+        <Text style={styles.hamburgerText}>☰</Text>
+      </Pressable>
+      {sidebarOpen && <Sidebar />}
+
       <Text style={styles.title}>User Dashboard</Text>
+
+      <Text style={styles.sectionLabel}>Test updateAnnouncement</Text>
+      <Text style={styles.hint}>
+        Paste a document id from the announcements collection (e.g. from add test or Firebase console).
+      </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Announcement document ID"
+        value={announcementId}
+        onChangeText={setAnnouncementId}
+        autoCapitalize="none"
+        autoCorrect={false}
+        editable={!updating}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="New title (optional if description set)"
+        value={editTitle}
+        onChangeText={setEditTitle}
+        editable={!updating}
+      />
+      <TextInput
+        style={[styles.input, styles.inputMultiline]}
+        placeholder="New description (optional if title set)"
+        value={editDescription}
+        onChangeText={setEditDescription}
+        multiline
+        editable={!updating}
+      />
+      <Pressable
+        style={[styles.buttonSecondary, updating && styles.buttonDisabled]}
+        onPress={onTestUpdate}
+        disabled={updating}>
+        <Text style={styles.buttonText}>{updating ? 'Updating…' : 'Update announcement'}</Text>
+      </Pressable>
+      {updateError ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{updateError}</Text>
+        </View>
+      ) : null}
+      {updateResult ? (
+        <View style={styles.resultBox}>
+          <Text style={styles.resultText}>{updateResult}</Text>
+        </View>
+      ) : null}
+
       <Pressable style={styles.button} onPress={onLogout}>
         <Text style={styles.buttonText}>Log Out</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+  },
+  container: {
+    backgroundColor: '#f9fdbfff',
+    flexGrow: 1,
     padding: 20,
-    justifyContent: 'center',
     gap: 12,
+    paddingBottom: 32,
+  },
+  hamburger: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  hamburgerText: {
+    fontSize: 28,
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 220,
+    backgroundColor: '#1a1a2e',
+    padding: 40,
+    zIndex: 9,
+    gap: 20,
+  },
+  sidebarTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  sidebarItem: {
+    color: 'white',
+    fontSize: 16,
+    paddingVertical: 8,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  hint: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  inputMultiline: {
+    minHeight: 72,
+    textAlignVertical: 'top',
   },
   button: {
     backgroundColor: '#111827',
@@ -46,10 +222,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     alignSelf: 'center',
+    marginTop: 8,
+  },
+  buttonSecondary: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: 'white',
     fontWeight: '700',
+  },
+  resultBox: {
+    backgroundColor: '#d4edda',
+    padding: 10,
+    borderRadius: 10,
+  },
+  resultText: {
+    fontFamily: 'Courier',
+    fontSize: 12,
+  },
+  errorBox: {
+    backgroundColor: '#f8d7da',
+    padding: 10,
+    borderRadius: 10,
+  },
+  errorText: {
+    color: '#6b0f1a',
   },
 });
 
