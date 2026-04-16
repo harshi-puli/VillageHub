@@ -22,9 +22,16 @@ function requireSignedInUid(): string {
   return uid;
 }
 
-// EDIT ME ⚠️: This function tells the user what to input is expected from 
+// EDIT ME ⚠️: This function tells the user what input is expected
 export type BookingInput = {
   reservedSpot: string;
+  /*Enter the rest of the fields and their expected data structures. 
+  .... */
+}
+
+// EDIT ME ⚠️: This function tells the user what updates are expected
+  // bookings only do 
+export type BookingUpdate = {
   /*Enter the rest of the fields and their expected data structures. 
   .... */
 }
@@ -54,6 +61,33 @@ export const addBooking = async (bookingData: {
 // Web code currently uses `addbooking` (lowercase b).
 export const addbooking = addBooking;
 
+//EDIT ME ⚠️: Update Feedback
+export const updateBooking = async (
+  feedbackId: string,
+  updates: BookingUpdate,
+): Promise<{ id: string } & BookingUpdate> => {
+  requireSignedInUid();
+
+  // `payload` collects only the fields we actually want to write.
+  const payload: Record<string, unknown> = {};
+
+  //add if statement that does the following: If a new status value was provided, queue it for saving.
+  //ex. if (updates.isCompleted !== undefined) payload.isCompleted = updates.isCompleted;
+  {
+    
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return { id: feedbackId };
+  }
+
+  await updateDoc(doc(db, 'feedback', feedbackId), payload);
+
+  return { id: feedbackId, ...updates };
+};
+
+
+
 /**
  * EDIT ME ⚠️: Checks if a proposed booking conflicts with any existing bookings.
  * A conflict = same reservedSpot + same site + overlapping checkIn/checkOut.
@@ -63,6 +97,9 @@ export const checkBookingConflicts = async (proposed: BookingInput) => {
   const snap = await getDocs(collection(db, 'booking'));
 
   const conflicts = snap.docs.filter((d) => {})
+  
+  
+
   return 0;
 };
 
@@ -84,3 +121,5 @@ export const listBooking = async () => {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
+
+
