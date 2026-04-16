@@ -31,6 +31,11 @@ export const rotateChores = async () => {
   const weekId = weekStart.toISOString().split('T')[0]; // e.g. "2025-04-07"
 }
 
+/** Legacy no-op from the web scaffold; safe to remove from UI later */
+export function handleImageClick(): void {
+  console.log('H668686868');
+}
+
 /**
  * Mark a chore as completed for the current week.
  */
