@@ -9,45 +9,58 @@ import {
   serverTimestamp,
   Timestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { auth, db } from '@/firebase';
 
-
-//Nothing to edit! This function is here to record if the user is logged in or not.
+// Nothing to edit! This function is here to record if the user is logged in or not.
 function requireSignedInUid(): string {
   const uid = auth.currentUser?.uid;
   if (!uid) {
-    throw new Error('You must be signed in to modify announcements.');
+    throw new Error('You must be signed in to modify bookings.');
   }
   return uid;
 }
 
-// EDIT ME ⚠️: This function tells the user what input is expected
+// Describes the full shape of a booking document.
 export type BookingInput = {
   reservedSpot: string;
-  /*Enter the rest of the fields and their expected data structures. 
-  .... */
-}
+  description: string;
+  site: string;
+  user: string;
+  checkIn: Date;
+  checkOut: Date;
+  approved: boolean;
+  type: string;
+};
 
-// EDIT ME ⚠️: This function tells the user what updates are expected
-  // bookings only do 
-export type BookingUpdate = {
-  /*Enter the rest of the fields and their expected data structures. 
-  .... */
-}
-
-//no need to edit!
+// No need to edit!
 export const addBooking = async (bookingData: {
   title: string;
   description?: string;
   dueDate: Date;
-  category?: string;
+  category: string;
+  reservedSpot: string;
+  site: string;
+  user: string;
+  checkIn: Date;
+  checkOut: Date;
+  approved: boolean;
+  type?: string;
 }) => {
+  const signedInUid = requireSignedInUid();
   const booking = {
     title: bookingData.title,
     description: bookingData.description || '',
     dueDate: bookingData.dueDate,
     category: bookingData.category || 'general',
+    reservedSpot: bookingData.reservedSpot,
+    site: bookingData.site,
+    user: bookingData.user || signedInUid,
+    checkIn: bookingData.checkIn,
+    checkOut: bookingData.checkOut,
+    approved: bookingData.approved,
+    type: bookingData.type || '',
     isCompleted: false,
     createdAt: serverTimestamp(),
     notified: false,
@@ -58,63 +71,46 @@ export const addBooking = async (bookingData: {
 
   return { id: docRef.id, ...booking };
 };
+
 // Web code currently uses `addbooking` (lowercase b).
 export const addbooking = addBooking;
 
-//EDIT ME ⚠️: Update Feedback
-export const updateBooking = async (
-  feedbackId: string,
-  updates: BookingUpdate,
-): Promise<{ id: string } & BookingUpdate> => {
-  requireSignedInUid();
-
-  // `payload` collects only the fields we actually want to write.
-  const payload: Record<string, unknown> = {};
-
-  //add if statement that does the following: If a new status value was provided, queue it for saving.
-  //ex. if (updates.isCompleted !== undefined) payload.isCompleted = updates.isCompleted;
-  {
-    
-  }
-
-  if (Object.keys(payload).length === 0) {
-    return { id: feedbackId };
-  }
-
-  await updateDoc(doc(db, 'feedback', feedbackId), payload);
-
-  return { id: feedbackId, ...updates };
-};
-
-
-
 /**
- * EDIT ME ⚠️: Checks if a proposed booking conflicts with any existing bookings.
+ * Checks if a proposed booking conflicts with any existing bookings.
  * A conflict = same reservedSpot + same site + overlapping checkIn/checkOut.
- * Returns the conflicting bookings, or an empty array if none.
+ * Returns the conflicting booking documents, or an empty array if none.
  */
 export const checkBookingConflicts = async (proposed: BookingInput) => {
   const snap = await getDocs(collection(db, 'booking'));
 
-  const conflicts = snap.docs.filter((d) => {})
-  
-  
+  const conflicts = snap.docs.filter((d) => {
+    const data = d.data();
 
-  return 0;
+    if (data.reservedSpot !== proposed.reservedSpot) return false;
+    if (data.site !== proposed.site) return false;
+
+    const existingCheckIn  = data.checkIn  instanceof Timestamp ? data.checkIn.toDate()  : new Date(data.checkIn);
+    const existingCheckOut = data.checkOut instanceof Timestamp ? data.checkOut.toDate() : new Date(data.checkOut);
+
+    // Overlap: proposed starts before existing ends AND proposed ends after existing starts
+    return proposed.checkIn < existingCheckOut && proposed.checkOut > existingCheckIn;
+  });
+
+  return conflicts.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 /**
- * Delete feedback by id (same collection as `addFeedback`).
+ * Delete a booking by id.
  */
-export const deleteBooking = async (feedbackId: string): Promise<string> => {
+export const deleteBooking = async (bookingId: string): Promise<string> => {
   requireSignedInUid();
-
-  await deleteDoc(doc(db, 'booking', feedbackId));
-  return feedbackId;
+  await deleteDoc(doc(db, 'booking', bookingId));
+  return bookingId;
 };
 
 /**
- * List feedback newest first. Requires a Firestore index on `createdAt` if you use this at scale.
+ * List all bookings, newest first.
+ * Requires a Firestore index on `createdAt` if you use this at scale.
  */
 export const listBooking = async () => {
   const q = query(collection(db, 'booking'), orderBy('createdAt', 'desc'));
@@ -122,4 +118,28 @@ export const listBooking = async () => {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
+/**
+ * List only the signed-in user's bookings, newest first.
+ */
+export const listUsersBookings = async () => {
+  const uid = requireSignedInUid();
+  const q = query(
+    collection(db, 'booking'),
+    where('user', '==', uid),
+    orderBy('createdAt', 'desc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
 
+/**
+ * Update a booking by id. Only the provided fields are written.
+ */
+export const updateBooking = async (
+  bookingId: string,
+  updates: Partial<BookingInput>,
+): Promise<void> => {
+  requireSignedInUid();
+  const bookingRef = doc(db, 'booking', bookingId);
+  await updateDoc(bookingRef, { ...updates });
+};
