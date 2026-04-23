@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import { collection, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/state/auth';
-import { loginResident, registerResident } from '@/services/authService';
+import { isResidentProfileAdmin, loginResident, registerResident } from '@/services/authService';
+import { db } from '@/firebase';
 
 export default function LoginScreen() {
   const { user, profile, loading } = useAuth();
@@ -11,16 +13,28 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [unitNumber, setUnitNumber] = useState('');
+  const [site, setSite] = useState('');
+  const [sites, setSites] = useState<string[]>([]);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const fetchSites = async () => {
+      const snap = await getDocs(collection(db, 'sites'));
+      setSites(snap.docs.map((d) => d.id));
+    };
+    fetchSites();
+  }, []);
+
+  useEffect(() => {
     if (loading) return;
     if (!user) return;
-    if (profile?.isAdmin === true) router.replace('/(admin)/adminDashboard');
-    else router.replace('/(user)/userDashboard');
+    if (isResidentProfileAdmin(profile)) {
+      router.replace('/(admin)/adminDashboard');
+    } else {
+      router.replace('/(user)/userDashboard');
+    }
   }, [loading, user, profile]);
 
   const onSubmit = async () => {
@@ -31,7 +45,7 @@ export default function LoginScreen() {
         const { error } = await loginResident({ email, password });
         if (error) setError(error);
       } else {
-        const { error } = await registerResident({ email, password, name, unitNumber });
+        const { error } = await registerResident({ email, password, name, site });
         if (error) setError(error);
       }
     } finally {
@@ -55,13 +69,21 @@ export default function LoginScreen() {
             editable={!submitting}
             autoCapitalize="words"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Unit number"
-            value={unitNumber}
-            onChangeText={setUnitNumber}
-            editable={!submitting}
-          />
+
+          <Text style={styles.label}>Site</Text>
+          <View style={styles.dropdownContainer}>
+            {sites.map((s) => (
+              <Pressable
+                key={s}
+                style={[styles.dropdownOption, site === s && styles.dropdownOptionSelected]}
+                onPress={() => setSite(s)}
+                disabled={submitting}>
+                <Text style={[styles.dropdownOptionText, site === s && styles.dropdownOptionTextSelected]}>
+                  {s}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </>
       )}
 
@@ -132,6 +154,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     alignItems: 'center',
   },
+  label: {
+    fontWeight: '600',
+    color: '#374151',
+  },
+  dropdownContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dropdownOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: 'white',
+    alignItems: 'center',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#2595ebff',
+    borderColor: '#2595ebff',
+  },
+  dropdownOptionText: {
+    fontWeight: '600',
+    color: '#374151',
+  },
+  dropdownOptionTextSelected: {
+    color: 'white',
+  },
   primaryButton: {
     backgroundColor: '#2595ebff',
     paddingVertical: 12,
@@ -152,4 +202,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

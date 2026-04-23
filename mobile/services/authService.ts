@@ -18,6 +18,13 @@ export type ResidentProfile = {
   isAdmin?: boolean;
 };
 
+/** Admins are indicated by `isAdmin: true` and/or `role: 'admin'` in Firestore. */
+export const isResidentProfileAdmin = (profile: ResidentProfile | null | undefined): boolean => {
+  if (!profile) return false;
+  if (profile.isAdmin === true) return true;
+  return profile.role === 'admin';
+};
+
 export const registerResident = async ({
   email,
   password,

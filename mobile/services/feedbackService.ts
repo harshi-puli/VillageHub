@@ -7,44 +7,34 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  Timestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { auth, db } from '@/firebase';
 
 
-// EDIT ME ⚠️: This function tells the user what to input is expected from 
 export type FeedbackInput = {
   title: string;
-  /*Enter the rest of the fields and their expected data structures. 
-  .... */
-}
+  description?: string;
+  category?: string;
+  site: string;
+};
 
-// EDIT ME ⚠️: Fields that can be changed: Only the status of a feedback. 
 export type FeedbackUpdates = {
-  /*Enter the rest of the fields and their expected data structures. 
-  ....
-  For this export you only need 1 line! Since only one field (status) can be changed
-  It should look like --> fieldname: type of value. 
-  ....*/
-}
+  status?: string;
+  isCompleted?: boolean;
+};
 
-//Nothing to edit! This function is here to 
 function requireSignedInUid(): string {
   const uid = auth.currentUser?.uid;
   if (!uid) {
-    throw new Error('You must be signed in to modify announcements.');
+    throw new Error('You must be signed in to modify feedback.');
   }
   return uid;
 }
 
 //Add Feedback - Nothing to change! Use as a quide/reference function.
-export const addFeedback = async (feedbackData: {
-  title: string;
-  description?: string;
-  category?: string;
-  site: string; //users can either add site specific feedback or general feedback. 
-}) => {
+export const addFeedback = async (feedbackData: FeedbackInput) => {
   const feedback = { //Returns a feedback object!
     title: feedbackData.title,
     description: feedbackData.description || '',
@@ -62,21 +52,17 @@ export const addFeedback = async (feedbackData: {
   return { id: docRef.id, ...feedback };
 };
 
-//EDIT ME ⚠️: Update Feedback
 export const updateFeedback = async (
   feedbackId: string,
   updates: FeedbackUpdates,
-): Promise<{ id: string } & FeedbackUpdates> => {
+): Promise<{ id: string } | ({ id: string } & FeedbackUpdates)> => {
   requireSignedInUid();
 
   // `payload` collects only the fields we actually want to write.
   const payload: Record<string, unknown> = {};
 
-  //add if statement that does the following: If a new status value was provided, queue it for saving.
-  //ex. if (updates.isCompleted !== undefined) payload.isCompleted = updates.isCompleted;
-  {
-    
-  }
+  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.isCompleted !== undefined) payload.isCompleted = updates.isCompleted;
 
   if (Object.keys(payload).length === 0) {
     return { id: feedbackId };
@@ -92,7 +78,7 @@ export const updateFeedback = async (
  */
 export const deleteFeedback = async (feedbackId: string): Promise<string> => {
   requireSignedInUid();
-  await deleteDoc(doc(db, 'booking', feedbackId));
+  await deleteDoc(doc(db, 'feedback', feedbackId));
   return feedbackId;
 };
 
@@ -113,96 +99,54 @@ export const listFeedback = async () => {
  */
 
 export const listUsersFeedback = async () => {
-  const { where } = await import('firebase/firestore');
-  const uid = requireSignedInUid();
+  const uid = requireSignedInUid();
+  const q = query(collection(db, 'feedback'), where('user', '==', uid), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
 
-  const collectionRef = collection(db, 'feedback');
-  const q = query(
-    collectionRef,
-    where('user', '==', uid),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+/** Current user's feedback, oldest first. */
+export const listUsersFeedbackOldestFirst = async () => {
+  const uid = requireSignedInUid();
+  const q = query(collection(db, 'feedback'), where('user', '==', uid), orderBy('createdAt', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByCategory = async (category: string) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('category', '==', category),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('category', '==', category), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByType = async (type: string) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('type', '==', type),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('type', '==', type), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByUser = async (userId: string) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('user', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('user', '==', userId), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByStatus = async (status: string) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('status', '==', status), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByCompletion = async (isCompleted: boolean) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('isCompleted', '==', isCompleted),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('isCompleted', '==', isCompleted), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackBySite = async (site: string) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('site', '==', site),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(collection(db, 'feedback'), where('site', '==', site), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackOldestFirst = async () => {
@@ -215,83 +159,68 @@ export const listFeedbackByCategoryAndStatus = async (
   category: string,
   status: string,
 ) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('category', '==', category),
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(
+    collection(db, 'feedback'),
+    where('category', '==', category),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackBySiteAndStatus = async (
   site: string,
   status: string,
 ) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('site', '==', site),
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(
+    collection(db, 'feedback'),
+    where('site', '==', site),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackByTypeAndStatus = async (
   type: string,
   status: string,
 ) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('type', '==', type),
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(
+    collection(db, 'feedback'),
+    where('type', '==', type),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listFeedbackBySiteAndCategory = async (
   site: string,
   category: string,
 ) => {
-  const { where } = await import('firebase/firestore');
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('site', '==', site),
-    where('category', '==', category),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const q = query(
+    collection(db, 'feedback'),
+    where('site', '==', site),
+    where('category', '==', category),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 export const listUsersFeedbackByStatus = async (status: string) => {
-  const { where } = await import('firebase/firestore');
-  const uid = requireSignedInUid();
-
-  const q = query(
-    collection(db, 'feedback'),
-    where('user', '==', uid),
-    where('status', '==', status),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const uid = requireSignedInUid();
+  const q = query(
+    collection(db, 'feedback'),
+    where('user', '==', uid),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 
