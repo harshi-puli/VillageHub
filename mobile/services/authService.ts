@@ -16,6 +16,7 @@ export type ResidentProfile = {
   role: 'resident' | 'admin' | string;
   createdAt: string;
   isAdmin?: boolean;
+  site: string;
 };
 
 /** Admins are indicated by `isAdmin: true` and/or `role: 'admin'` in Firestore. */
@@ -30,11 +31,13 @@ export const registerResident = async ({
   password,
   name,
   unitNumber,
+  site
 }: {
   email: string;
   password: string;
   name: string;
   unitNumber: string;
+  site: string;
 }): Promise<{ user: User | null; error: string | null }> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);

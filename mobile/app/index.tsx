@@ -14,6 +14,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [site, setSite] = useState('');
+  const [unitNumber, setUnitNumber] = useState('');
   const [sites, setSites] = useState<string[]>([]);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState<string>('');
@@ -45,7 +46,7 @@ export default function LoginScreen() {
         const { error } = await loginResident({ email, password });
         if (error) setError(error);
       } else {
-        const { error } = await registerResident({ email, password, name, site });
+        const { error } = await registerResident({ email, password, name, site, unitNumber });
         if (error) setError(error);
       }
     } finally {
@@ -84,6 +85,15 @@ export default function LoginScreen() {
               </Pressable>
             ))}
           </View>
+
+          <Text style={styles.label}>Unit Number</Text>  
+          <TextInput
+            style={styles.input}
+            placeholder="Unit number"
+            value={unitNumber}
+            onChangeText={setUnitNumber}
+            editable={!submitting}
+          />
         </>
       )}
 
