@@ -32,9 +32,9 @@ type FeedbackItem = {
   createdAt?: { seconds?: number } | Date;
 };
 
-const MAX_VISIBLE_ITEMS = 3;
+const MAX_VISIBLE_ITEMS = 3; 
 const ROW_HEIGHT_PX = 118;
-const cappedScrollMaxHeight = MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
+const cappedScrollMaxHeight =  MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
 
 const toDate = (value?: { seconds?: number } | Date): Date => {
   if (!value) return new Date(0);

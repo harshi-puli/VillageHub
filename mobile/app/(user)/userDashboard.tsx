@@ -42,9 +42,7 @@ type ChoreRow = {
   isCompleted?: boolean;
 };
 
-/** Viewport shows roughly this many rows before inner scroll. */
 const MAX_VISIBLE_ITEMS = 3;
-/** Approximate row height (card + gap) for capped scroll areas. */
 const ROW_HEIGHT_PX = 118;
 
 const toDate = (value?: { seconds?: number } | Date | Timestamp): Date => {
@@ -68,11 +66,13 @@ export default function UserDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHomeData = useCallback(async () => {
-    const uid = user?.uid;
+    // Guard: if there's no user, don't touch any auth-gated service
+    if (!user?.uid) return;
+
     const [announcementData, bookingData, choreData] = await Promise.all([
       listAnnouncements(),
       listUsersBookings(),
-      uid ? listChoresForUser(uid) : Promise.resolve([]),
+      listChoresForUser(user.uid),
     ]);
     setAnnouncements(announcementData as Announcement[]);
     setBookings(bookingData as Booking[]);
@@ -80,6 +80,12 @@ export default function UserDashboard() {
   }, [user?.uid]);
 
   useEffect(() => {
+    // Don't attempt load if signed out
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
     const load = async () => {
       try {
         setLoading(true);
@@ -89,7 +95,7 @@ export default function UserDashboard() {
       }
     };
     load();
-  }, [fetchHomeData]);
+  }, [fetchHomeData, user?.uid]);
 
   const upcomingBookings = useMemo(() => {
     const now = new Date();
@@ -99,6 +105,7 @@ export default function UserDashboard() {
   }, [bookings]);
 
   const handleRefresh = async () => {
+    if (!user?.uid) return;
     try {
       setRefreshing(true);
       await fetchHomeData();
@@ -108,6 +115,10 @@ export default function UserDashboard() {
   };
 
   const handleLogout = async () => {
+    // Clear local state before signing out so no re-fetch is triggered
+    setAnnouncements([]);
+    setBookings([]);
+    setChores([]);
     await logoutResident();
     router.replace('/');
   };

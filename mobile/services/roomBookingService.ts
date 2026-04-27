@@ -143,3 +143,95 @@ export const updateBooking = async (
   const bookingRef = doc(db, 'booking', bookingId);
   await updateDoc(bookingRef, { ...updates });
 };
+
+export const listBookingBySite = async (site: string) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('site', '==', site)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByReservedSpot = async (reservedSpot: string) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('reservedSpot', '==', reservedSpot));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingApproved = async (approved: boolean) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('true', '==', approved));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByUser = async (user: string) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('user', '==', user)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByCheckIn = async (checkIn: Date) => {
+const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('checkIn', '==', checkIn)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByCheckOut = async (checkOut: Date) => {
+const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('checkOut', '==', checkOut)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByReservedAndSite = async (reservedSpot: string, site: string) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('reservedSpot', '==', reservedSpot),
+    where('site', '==', site)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByReservedSiteApproved = async (reservedSpot: string, site: string, approved: boolean) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('reservedSpot', '==', reservedSpot),
+    where('site', '==', site),
+    where('true', '==', approved)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}
+
+export const listBookingByApprovedAndSite = async (reservedSpot: string, site: string, approved: boolean) => {
+  const q = query(
+    collection(db, 'booking'),
+    orderBy('createdAt', 'desc'),
+    where('site', '==', site),
+    where('true', '==', approved)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
+}

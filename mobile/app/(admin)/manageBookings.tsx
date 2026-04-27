@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { listBooking, updateBooking } from '@/services/roomBookingService';
+import { subscribeToAuthState } from '@/services/authService';
 import { Timestamp } from 'firebase/firestore';
 
 type BookingRow = {
@@ -42,13 +43,33 @@ export default function ManageBookings() {
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<Tab>('pending');
   const [actingId, setActingId] = useState<string | null>(null);
+  const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null); // null = unknown
 
-  const load = useCallback(async () => {
-    const data = (await listBooking()) as BookingRow[];
-    setBookings(data);
+  // Track auth state — stop all fetches the moment user signs out
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState((user) => {
+      setIsSignedIn(!!user);
+    });
+    return unsubscribe;
   }, []);
 
+  const load = useCallback(async () => {
+    // Guard: don't fetch if we know there's no user
+    if (isSignedIn === false) return;
+    const data = (await listBooking()) as BookingRow[];
+    setBookings(data);
+  }, [isSignedIn]);
+
   useEffect(() => {
+    // Don't attempt load until auth state is known
+    if (isSignedIn === null) return;
+    // If signed out, clear bookings and stop loading
+    if (isSignedIn === false) {
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         setLoading(true);
@@ -59,9 +80,10 @@ export default function ManageBookings() {
         setLoading(false);
       }
     })();
-  }, [load]);
+  }, [load, isSignedIn]);
 
   const onRefresh = useCallback(async () => {
+    if (!isSignedIn) return;
     try {
       setRefreshing(true);
       await load();
@@ -70,7 +92,7 @@ export default function ManageBookings() {
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [load, isSignedIn]);
 
   const filtered = useMemo(() => {
     if (tab === 'pending') return bookings.filter((b) => !b.approved);
@@ -79,6 +101,7 @@ export default function ManageBookings() {
   }, [bookings, tab]);
 
   const approve = async (id: string) => {
+    if (!isSignedIn) return;
     try {
       setActingId(id);
       await updateBooking(id, { approved: true });
@@ -91,6 +114,7 @@ export default function ManageBookings() {
   };
 
   const unapprove = (id: string) => {
+    if (!isSignedIn) return;
     Alert.alert('Mark pending?', 'This will set the booking back to pending.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -111,7 +135,7 @@ export default function ManageBookings() {
     ]);
   };
 
-  if (loading) {
+  if (loading || isSignedIn === null) {
     return (
       <View style={[styles.screen, styles.centered]}>
         <ActivityIndicator />
