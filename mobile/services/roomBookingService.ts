@@ -235,3 +235,32 @@ export const listBookingByApprovedAndSite = async (reservedSpot: string, site: s
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data()}));
 }
+
+function toDateStr(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) return val.toDateString();
+  if (val instanceof Timestamp) return val.toDate().toDateString();
+  if (typeof val === 'object' && val !== null && 'seconds' in val)
+    return new Date((val as { seconds: number }).seconds * 1000).toDateString();
+  return '';
+}
+
+/**
+ * Returns true if a booking already exists for the exact same room and exact
+ * same check-in/check-out dates (day-level precision).
+ */
+export const checkExactBookingConflict = async (
+  reservedSpot: string,
+  checkIn: Date,
+  checkOut: Date,
+): Promise<boolean> => {
+  const snap = await getDocs(collection(db, 'booking'));
+  return snap.docs.some((d) => {
+    const data = d.data();
+    if (data.reservedSpot !== reservedSpot) return false;
+    return (
+      toDateStr(data.checkIn) === checkIn.toDateString() &&
+      toDateStr(data.checkOut) === checkOut.toDateString()
+    );
+  });
+};
