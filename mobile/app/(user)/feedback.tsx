@@ -15,7 +15,6 @@ import {
   addFeedback,
   deleteFeedback,
   listUsersFeedback,
-  listUsersFeedbackByStatus,
   listUsersFeedbackOldestFirst,
 } from '@/services/feedbackService';
 
@@ -53,7 +52,7 @@ export default function Feedback() {
   const [submitting, setSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
-  const [statusFilter, setStatusFilter] = useState<string | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<string | 'all'>('Awaiting Review');
   const isFirstRun = useRef(true);
 
   const [title, setTitle] = useState('');
@@ -69,15 +68,13 @@ export default function Feedback() {
     }
     try {
       let data: FeedbackItem[];
-      if (statusFilter === 'all') {
-        if (sortOrder === 'newest') {
-          data = (await listUsersFeedback()) as FeedbackItem[];
-        } else {
-          data = (await listUsersFeedbackOldestFirst()) as FeedbackItem[];
-        }
+      if (sortOrder === 'newest') {
+        data = (await listUsersFeedback()) as FeedbackItem[];
       } else {
-        const rows = (await listUsersFeedbackByStatus(statusFilter)) as FeedbackItem[];
-        data = sortOrder === 'oldest' ? [...rows].reverse() : rows;
+        data = (await listUsersFeedbackOldestFirst()) as FeedbackItem[];
+      }
+      if (statusFilter !== 'all') {
+        data = data.filter((item) => (item.status ?? 'Awaiting Review') === statusFilter);
       }
       setFeedbackItems(data);
     } catch {

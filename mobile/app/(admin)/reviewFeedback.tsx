@@ -19,11 +19,10 @@ type FeedbackItem = {
   status?: string;
   site?: string;
   user?: string;
-  isCompleted?: boolean;
   createdAt?: { seconds?: number } | Date;
 };
 
-const STATUS_OPTIONS = ['Awaiting Review', 'In Progress', 'Resolved', 'Closed'] as const;
+const STATUS_OPTIONS = ['Awaiting Review', 'In Progress', 'Resolved'] as const;
 
 function formatCreatedAt(value: FeedbackItem['createdAt']) {
   if (!value) return '—';
@@ -43,7 +42,6 @@ export default function ReviewFeedback() {
   const [saving, setSaving] = useState(false);
   const [editItem, setEditItem] = useState<FeedbackItem | null>(null);
   const [draftStatus, setDraftStatus] = useState<string>('Awaiting Review');
-  const [draftCompleted, setDraftCompleted] = useState(false);
 
   const load = useCallback(async () => {
     const data = (await listFeedback()) as FeedbackItem[];
@@ -77,7 +75,6 @@ export default function ReviewFeedback() {
   const openEdit = (item: FeedbackItem) => {
     setEditItem(item);
     setDraftStatus(item.status ?? 'Awaiting Review');
-    setDraftCompleted(!!item.isCompleted);
   };
 
   const closeEdit = () => {
@@ -88,10 +85,7 @@ export default function ReviewFeedback() {
     if (!editItem) return;
     try {
       setSaving(true);
-      await updateFeedback(editItem.id, {
-        status: draftStatus,
-        isCompleted: draftCompleted,
-      });
+      await updateFeedback(editItem.id, { status: draftStatus });
       closeEdit();
       await load();
     } catch {
@@ -113,7 +107,7 @@ export default function ReviewFeedback() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.title}>All feedback</Text>
-        <Text style={styles.subtitle}>Tap a row to update status or completion.</Text>
+        <Text style={styles.subtitle}>Tap a row to update status.</Text>
       </View>
 
       <FlatList
@@ -129,8 +123,8 @@ export default function ReviewFeedback() {
               <Text style={styles.cardTitle} numberOfLines={2}>
                 {item.title}
               </Text>
-              <View style={[styles.badge, item.isCompleted && styles.badgeDone]}>
-                <Text style={styles.badgeText}>{item.isCompleted ? 'Done' : item.status ?? 'Pending'}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{item.status ?? 'Pending'}</Text>
               </View>
             </View>
             {!!item.description && (
@@ -167,20 +161,6 @@ export default function ReviewFeedback() {
                   <Text style={[styles.chipText, draftStatus === s && styles.chipTextActive]}>{s}</Text>
                 </Pressable>
               ))}
-            </View>
-
-            <Text style={styles.label}>Completed</Text>
-            <View style={styles.row}>
-              <Pressable
-                style={[styles.toggle, draftCompleted && styles.toggleOn]}
-                onPress={() => setDraftCompleted(true)}>
-                <Text style={styles.toggleText}>Yes</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toggle, !draftCompleted && styles.toggleOn]}
-                onPress={() => setDraftCompleted(false)}>
-                <Text style={styles.toggleText}>No</Text>
-              </Pressable>
             </View>
 
             <View style={styles.modalFooter}>
