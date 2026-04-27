@@ -69,14 +69,14 @@ export default function UserDashboard() {
     // Guard: if there's no user, don't touch any auth-gated service
     if (!user?.uid) return;
 
-    const [announcementData, bookingData, choreData] = await Promise.all([
+    const [announcementResult, bookingResult, choreResult] = await Promise.allSettled([
       listAnnouncements(),
       listUsersBookings(),
       listChoresForUser(user.uid),
     ]);
-    setAnnouncements(announcementData as Announcement[]);
-    setBookings(bookingData as Booking[]);
-    setChores(choreData as ChoreRow[]);
+    if (announcementResult.status === 'fulfilled') setAnnouncements(announcementResult.value as Announcement[]);
+    if (bookingResult.status === 'fulfilled')      setBookings(bookingResult.value as Booking[]);
+    if (choreResult.status === 'fulfilled')        setChores(choreResult.value as ChoreRow[]);
   }, [user?.uid]);
 
   useEffect(() => {
@@ -98,9 +98,10 @@ export default function UserDashboard() {
   }, [fetchHomeData, user?.uid]);
 
   const upcomingBookings = useMemo(() => {
-    const now = new Date();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
     return bookings
-      .filter((booking) => toDate(booking.checkIn) >= now)
+      .filter((booking) => toDate(booking.checkIn) >= startOfToday)
       .sort((a, b) => toDate(a.checkIn).getTime() - toDate(b.checkIn).getTime());
   }, [bookings]);
 
