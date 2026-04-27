@@ -50,6 +50,7 @@ export const registerResident = async ({
       unitNumber,
       role: 'resident',
       createdAt: new Date().toISOString(),
+      site,
     } satisfies ResidentProfile);
 
     return { user, error: null };
