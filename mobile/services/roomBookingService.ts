@@ -254,10 +254,11 @@ export const checkExactBookingConflict = async (
   checkIn: Date,
   checkOut: Date,
 ): Promise<boolean> => {
-  const snap = await getDocs(collection(db, 'booking'));
+  // Query only bookings for this room — avoids reading the entire collection
+  const q = query(collection(db, 'booking'), where('reservedSpot', '==', reservedSpot));
+  const snap = await getDocs(q);
   return snap.docs.some((d) => {
     const data = d.data();
-    if (data.reservedSpot !== reservedSpot) return false;
     return (
       toDateStr(data.checkIn) === checkIn.toDateString() &&
       toDateStr(data.checkOut) === checkOut.toDateString()

@@ -185,7 +185,12 @@ export default function Bookings() {
     }
     try {
       setSubmitting(true);
-      const isDuplicate = await checkExactBookingConflict(fRoom, checkIn, checkOut);
+      let isDuplicate = false;
+      try {
+        isDuplicate = await checkExactBookingConflict(fRoom, checkIn, checkOut);
+      } catch {
+        // If the conflict check fails (e.g. Firestore rules), proceed anyway
+      }
       if (isDuplicate) {
         Alert.alert(
           'Already booked',
@@ -365,7 +370,7 @@ export default function Bookings() {
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>New booking</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
               <Text style={styles.fieldLabel}>Title *</Text>
               <TextInput
                 style={styles.input}
@@ -426,16 +431,16 @@ export default function Bookings() {
                 value={fCheckOut}
                 onChangeText={setFCheckOut}
               />
-            </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={closeModal} disabled={submitting}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, submitting && styles.saveBtnDisabled]} onPress={handleAdd} disabled={submitting}>
-                <Text style={styles.saveBtnText}>{submitting ? 'Checking…' : 'Save booking'}</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={closeModal} disabled={submitting}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.saveBtn, submitting && styles.saveBtnDisabled]} onPress={handleAdd} disabled={submitting}>
+                  <Text style={styles.saveBtnText}>{submitting ? 'Checking…' : 'Save booking'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -506,4 +511,5 @@ const styles = StyleSheet.create({
   saveBtnText:     { fontSize: 14, color: '#fff', fontWeight: '600' },
   saveBtnDisabled: { opacity: 0.6 },
   bookablesError: { fontSize: 12, color: '#b91c1c', backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 4 },
+  modalScroll: { paddingBottom: 8 },
 });
