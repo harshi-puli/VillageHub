@@ -47,6 +47,7 @@ export const addBooking = async (bookingData: {
   checkOut: Date;
   approved: boolean;
   type?: string;
+  timeSlot?: string;
 }) => {
   const signedInUid = requireSignedInUid();
   const booking = {
@@ -61,6 +62,7 @@ export const addBooking = async (bookingData: {
     checkOut: bookingData.checkOut,
     approved: bookingData.approved,
     type: bookingData.type || '',
+    timeSlot: bookingData.timeSlot || '',
     isCompleted: false,
     createdAt: serverTimestamp(),
     notified: false,
@@ -249,19 +251,22 @@ function toDateStr(val: unknown): string {
  * Returns true if a booking already exists for the exact same room and exact
  * same check-in/check-out dates (day-level precision).
  */
+const FULL_DAY_SLOT = 'Full Day (8AM – 8PM)';
+
 export const checkExactBookingConflict = async (
   reservedSpot: string,
   checkIn: Date,
   checkOut: Date,
+  timeSlot: string,
 ): Promise<boolean> => {
-  // Query only bookings for this room — avoids reading the entire collection
   const q = query(collection(db, 'booking'), where('reservedSpot', '==', reservedSpot));
   const snap = await getDocs(q);
   return snap.docs.some((d) => {
     const data = d.data();
-    return (
-      toDateStr(data.checkIn) === checkIn.toDateString() &&
-      toDateStr(data.checkOut) === checkOut.toDateString()
-    );
+    if (toDateStr(data.checkIn) !== checkIn.toDateString()) return false;
+    if (toDateStr(data.checkOut) !== checkOut.toDateString()) return false;
+    const existing = data.timeSlot ?? '';
+    // Conflict if same slot, or either booking is Full Day
+    return existing === timeSlot || existing === FULL_DAY_SLOT || timeSlot === FULL_DAY_SLOT;
   });
 };
