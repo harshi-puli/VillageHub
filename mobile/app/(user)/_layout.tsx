@@ -1,6 +1,8 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Image, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Text, View } from 'react-native';
+import { useAuth } from '@/state/auth';
+import { isResidentProfileAdmin } from '@/services/authService';
 
 function LogoHeader() {
   return (
@@ -15,6 +17,19 @@ function LogoHeader() {
 }
 
 export default function UserLayout() {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F8F6' }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!user) return <Redirect href="/" />;
+  if (isResidentProfileAdmin(profile)) return <Redirect href="/(admin)/adminDashboard" />;
+
   return (
     <Tabs screenOptions={{ headerTitle: () => <LogoHeader /> }}>
       <Tabs.Screen name="userDashboard" options={{ title: 'Home', tabBarIcon: ({ color }) => <Ionicons name="home" size={28} color={color} /> }} />
