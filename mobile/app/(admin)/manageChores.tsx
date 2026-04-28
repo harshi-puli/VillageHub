@@ -234,11 +234,6 @@ function AssignModal({
         <View style={modal.header}>
           <View style={{ flex: 1 }}>
             <Text style={modal.title}>Assign Resident</Text>
-            {!!chore?.site && (
-              <Text style={{ fontSize: 12, color: '#6A6964', marginTop: 2 }}>
-                Showing residents at {chore.site}
-              </Text>
-            )}
           </View>
           <Pressable onPress={onClose}>
             <Ionicons name="close" size={24} color="#1A1A18" />
@@ -267,7 +262,7 @@ function AssignModal({
             {residents.length === 0 ? (
               <View style={assign_.emptyWrap}>
                 <Ionicons name="people-outline" size={36} color="#C8C7C0" />
-                <Text style={assign_.empty}>No residents found for {chore?.site}.</Text>
+                <Text style={assign_.empty}>No residents found.</Text>
               </View>
             ) : (
               residents.map((r) => {
@@ -282,12 +277,12 @@ function AssignModal({
                     <View style={assign_.cardLeft}>
                       <View style={assign_.avatar}>
                         <Text style={assign_.avatarText}>
-                          {r.name.charAt(0).toUpperCase()}
+                          {(r.name ?? r.email ?? '?').charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View>
-                        <Text style={assign_.name}>{r.name}</Text>
-                        <Text style={assign_.meta}>Unit {r.unitNumber} · {r.email}</Text>
+                        <Text style={assign_.name}>{r.name ?? r.email ?? r.uid}</Text>
+                        <Text style={assign_.meta}>{r.unitNumber ? `Unit ${r.unitNumber} · ` : ''}{r.email ?? r.uid}</Text>
                       </View>
                     </View>
                     {isCurrentlyAssigned && (
@@ -307,17 +302,18 @@ function AssignModal({
 
 // ─── Rotate Modal ─────────────────────────────────────────────────────────────
 
-function RotateModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function RotateModal({ visible, onClose, onRotated }: { visible: boolean; onClose: () => void; onRotated: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleRotate = async () => {
     try {
       setSubmitting(true);
       await rotateChores();
+      onRotated();
       onClose();
-      Alert.alert('Done', 'Chore rotation was recorded for the current week.');
-    } catch {
-      Alert.alert('Error', 'Unable to rotate chores.');
+      Alert.alert('Done', 'Chores have been randomly reassigned to residents.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Unable to rotate chores.');
     } finally {
       setSubmitting(false);
     }
@@ -502,7 +498,7 @@ export default function ManageChores() {
         onAssigned={load}
         chore={assigningChore}
       />
-      <RotateModal visible={showRotate} onClose={() => setShowRotate(false)} />
+      <RotateModal visible={showRotate} onClose={() => setShowRotate(false)} onRotated={load} />
     </View>
   );
 }

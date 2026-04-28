@@ -249,7 +249,7 @@ export default function UserDashboard() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f9fdbfff',
+    backgroundColor: '#F8F8F6',
     flex: 1,
   },
   center: {
@@ -266,8 +266,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   title: {
-    fontSize: 30,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '600',
     color: '#1A1A18',
   },
   section: {

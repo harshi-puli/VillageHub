@@ -11,7 +11,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { db, auth } from '@/firebase';
 
 
 export type ChoreInput = {
@@ -37,7 +37,7 @@ export const addChore = async (choreData: ChoreInput) => {
     description: (choreData.description ?? '').trim(),
     assignedTo: null,
     assignedName: null,
-    site: choreData.site.trim().toLowerCase(),
+    site: choreData.site.trim(),
     dueDate: choreData.dueDate,
     isCompleted: false,
     createdAt: serverTimestamp(),
@@ -69,6 +69,7 @@ export const unassignChore = async (choreId: string): Promise<void> => {
 };
 
 export const deleteChore = async (choreId: string): Promise<void> => {
+  if (!auth.currentUser) throw new Error('Must be signed in to delete chores.');
   await deleteDoc(doc(db, 'chores', choreId));
 };
 
@@ -87,21 +88,19 @@ export const listAllChores = async () => {
   return rows.sort((a, b) => dueMs(a) - dueMs(b));
 };
 
-export const listResidentsBySite = async (site: string) => {
-  const q = query(
-    collection(db, 'users'),
-    where('site', '==', site),
-    where('role', '==', 'resident'),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ uid: d.id, ...d.data() })) as {
-    uid: string;
-    name: string;
-    email: string;
-    unitNumber: string;
-    site: string;
-    role: string;
-  }[];
+export const listResidentsBySite = async (_site?: string) => {
+  const snap = await getDocs(collection(db, 'users'));
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() } as {
+      uid: string;
+      name: string;
+      email: string;
+      unitNumber: string;
+      site: string;
+      role: string;
+      isAdmin?: boolean;
+    }))
+    .filter((u) => !u.isAdmin);
 };
 
 const getWeekStart = (date: Date = new Date()): Date => {
@@ -114,12 +113,32 @@ const getWeekStart = (date: Date = new Date()): Date => {
 };
 
 export const rotateChores = async () => {
-  const weekStart = getWeekStart();
-  const weekId = weekStart.toISOString().split('T')[0];
-  await setDoc(
-    doc(db, 'choreAssignments', weekId),
-    { weekId, rotatedAt: serverTimestamp() },
-    { merge: true }
+  const [usersSnap, choresSnap] = await Promise.all([
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'chores')),
+  ]);
+
+  const residents = usersSnap.docs
+    .map((d) => ({ uid: d.id, ...d.data() } as { uid: string; name: string; isAdmin?: boolean }))
+    .filter((u) => !u.isAdmin);
+
+  if (residents.length === 0) throw new Error('No residents to assign chores to.');
+
+  // Fisher-Yates shuffle
+  const shuffled = [...residents];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  await Promise.all(
+    choresSnap.docs.map((choreDoc, i) => {
+      const resident = shuffled[i % shuffled.length];
+      return updateDoc(doc(db, 'chores', choreDoc.id), {
+        assignedTo: resident.uid,
+        assignedName: resident.name ?? resident.uid,
+      });
+    }),
   );
 };
 
