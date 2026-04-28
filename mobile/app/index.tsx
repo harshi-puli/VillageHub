@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { collection, getDocs } from 'firebase/firestore';
 
 import { useAuth } from '@/state/auth';
 import { isResidentProfileAdmin, loginResident, registerResident } from '@/services/authService';
 import { db } from '@/firebase';
+
+const logo = require('../assets/images/TVS_logo.png');
 
 export default function LoginScreen() {
   const { user, profile, loading } = useAuth();
@@ -30,6 +40,7 @@ export default function LoginScreen() {
   useEffect(() => {
     if (loading) return;
     if (!user) return;
+
     if (isResidentProfileAdmin(profile)) {
       router.replace('/(admin)/adminDashboard');
     } else {
@@ -40,6 +51,7 @@ export default function LoginScreen() {
   const onSubmit = async () => {
     setError('');
     setSubmitting(true);
+
     try {
       if (isLogin) {
         const { error } = await loginResident({ email, password });
@@ -55,150 +67,197 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Log In' : 'Sign Up'}</Text>
+      <View style={styles.authBox}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+        <Text style={styles.mainTitle}>
+          {isLogin ? 'Welcome,' : 'Create Account'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {isLogin ? 'Glad to see you!' : 'to get started now!'}
+        </Text>
 
-      {!isLogin && (
-        <>
+        {!!error && <Text style={styles.error}>{error}</Text>}
+
+        {!isLogin && (
           <TextInput
             style={styles.input}
-            placeholder="Full name"
+            placeholder="Full Name"
+            placeholderTextColor="#007C83"
             value={name}
             onChangeText={setName}
             editable={!submitting}
             autoCapitalize="words"
           />
+        )}
 
-          <Text style={styles.label}>Site</Text>
-          <View style={styles.dropdownContainer}>
-            {sites.map((s) => (
-              <Pressable
-                key={s}
-                style={[styles.dropdownOption, site === s && styles.dropdownOptionSelected]}
-                onPress={() => setSite(s)}
-                disabled={submitting}>
-                <Text style={[styles.dropdownOptionText, site === s && styles.dropdownOptionTextSelected]}>
-                  {s}
-                </Text>
-              </Pressable>
-            ))}
+        <TextInput
+          style={styles.input}
+          placeholder="Email Address"
+          placeholderTextColor="#007C83"
+          value={email}
+          onChangeText={setEmail}
+          editable={!submitting}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#007C83"
+          value={password}
+          onChangeText={setPassword}
+          editable={!submitting}
+          secureTextEntry
+        />
+
+        {!isLogin && (
+          <View style={styles.siteSection}>
+            <Text style={styles.siteLabel}>Choose your site</Text>
+
+            <View style={styles.siteOptions}>
+              {sites.map((s) => (
+                <Pressable
+                  key={s}
+                  style={[styles.siteOption, site === s && styles.siteOptionSelected]}
+                  onPress={() => setSite(s)}
+                  disabled={submitting}
+                >
+                  <Text style={[styles.siteText, site === s && styles.siteTextSelected]}>
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </>
-      )}
+        )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        editable={!submitting}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        editable={!submitting}
-        secureTextEntry
-      />
+        <Pressable style={styles.primaryButton} onPress={onSubmit} disabled={submitting}>
+          <Text style={styles.primaryButtonText}>
+            {submitting ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
+          </Text>
+        </Pressable>
 
-      <Pressable style={styles.primaryButton} onPress={onSubmit} disabled={submitting}>
-        <Text style={styles.primaryButtonText}>
-          {submitting ? 'Please wait...' : isLogin ? 'Log In' : 'Sign Up'}
-        </Text>
-      </Pressable>
+        {submitting && <ActivityIndicator />}
 
-      {submitting && <ActivityIndicator />}
-
-      <Pressable
-        style={styles.linkButton}
-        onPress={() => {
-          setIsLogin((v) => !v);
-          setError('');
-        }}
-        disabled={submitting}>
-        <Text style={styles.linkText}>
-          {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
-        </Text>
-      </Pressable>
+        <Pressable
+          style={styles.switchButton}
+          onPress={() => {
+            setIsLogin((v) => !v);
+            setError('');
+          }}
+          disabled={submitting}
+        >
+          <Text style={styles.switchSmallText}>
+            {isLogin ? "Don’t have an account?" : 'Already have an account?'}
+          </Text>
+          <Text style={styles.switchMainText}>
+            {isLogin ? 'Sign Up Now' : 'Login Now'}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f9fdbfff',
     flex: 1,
-    padding: 20,
+    backgroundColor: '#FBE9A6',
     justifyContent: 'center',
-    gap: 12,
+    alignItems: 'center',
+    padding: 24,
   },
-  title: {
-    fontSize: 28,
+  authBox: {
+    width: '100%',
+    maxWidth: 420,
+    alignItems: 'center',
+  },
+  logo: {
+    width: 115,
+    height: 115,
+    marginBottom: 8,
+  },
+  mainTitle: {
+    fontSize: 24,
     fontWeight: '700',
+    color: '#007C83',
     textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 22,
+    color: '#007C83',
+    textAlign: 'center',
+    marginBottom: 26,
   },
   error: {
     color: '#b91c1c',
     textAlign: 'center',
+    marginBottom: 10,
+    fontWeight: '600',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
+    width: 220,
+    backgroundColor: '#F5C400',
+    color: '#007C83',
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: 'white',
+    paddingVertical: 11,
+    marginBottom: 12,
+    fontSize: 14,
+    borderWidth: 0,
+  },
+  siteSection: {
+    width: 220,
+    marginBottom: 12,
+  },
+  siteLabel: {
+    color: '#007C83',
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  siteOptions: {
+    gap: 8,
+  },
+  siteOption: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
     alignItems: 'center',
   },
-  label: {
-    fontWeight: '600',
-    color: '#374151',
+  siteOptionSelected: {
+    backgroundColor: '#007C83',
   },
-  dropdownContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  dropdownOption: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: 'white',
-    alignItems: 'center',
-  },
-  dropdownOptionSelected: {
-    backgroundColor: '#2595ebff',
-    borderColor: '#2595ebff',
-  },
-  dropdownOptionText: {
-    fontWeight: '600',
-    color: '#374151',
-  },
-  dropdownOptionTextSelected: {
-    color: 'white',
-  },
-  primaryButton: {
-    backgroundColor: '#2595ebff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: 'white',
+  siteText: {
+    color: '#007C83',
     fontWeight: '700',
   },
-  linkButton: {
-    paddingVertical: 8,
+  siteTextSelected: {
+    color: '#FFFFFF',
+  },
+  primaryButton: {
+    width: 220,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  primaryButtonText: {
+    color: '#007C83',
+    fontWeight: '700',
+  },
+  switchButton: {
+    marginTop: 28,
     alignItems: 'center',
   },
-  linkText: {
-    color: '#2595ebff',
-    fontWeight: '600',
+  switchSmallText: {
+    color: '#007C83',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  switchMainText: {
+    color: '#000000',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

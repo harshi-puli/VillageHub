@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,77 +7,30 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Timestamp } from 'firebase/firestore';
 import { logoutResident } from '@/services/authService';
 import { listAnnouncements } from '@/services/announcementService';
-import { listChoresForUser } from '@/services/choreService';
-import { listUsersBookings } from '@/services/roomBookingService';
-import { useAuth } from '@/state/auth';
+
+const logo = require('../../assets/images/TVS_logo.png');
 
 type Announcement = {
   id: string;
   title: string;
   description?: string;
-  category?: string;
-  dueDate?: { seconds?: number } | Date;
 };
-
-type Booking = {
-  id: string;
-  title: string;
-  site?: string;
-  reservedSpot?: string;
-  checkIn?: { seconds?: number } | Date;
-  approved?: boolean;
-};
-
-type ChoreRow = {
-  id: string;
-  title: string;
-  description?: string;
-  site?: string;
-  dueDate?: { seconds?: number } | Date;
-  isCompleted?: boolean;
-};
-
-/** Viewport shows roughly this many rows before inner scroll. */
-const MAX_VISIBLE_ITEMS = 3;
-/** Approximate row height (card + gap) for capped scroll areas. */
-const ROW_HEIGHT_PX = 118;
-
-const toDate = (value?: { seconds?: number } | Date | Timestamp): Date => {
-  if (!value) return new Date(0);
-  if (value instanceof Date) return value;
-  if (value instanceof Timestamp) return value.toDate();
-  if (typeof value === 'object' && 'seconds' in value && typeof value.seconds === 'number') {
-    return new Date(value.seconds * 1000);
-  }
-  return new Date(0);
-};
-
-const cappedScrollMaxHeight = MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
 
 export default function UserDashboard() {
-  const { user } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [chores, setChores] = useState<ChoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const fetchHomeData = useCallback(async () => {
-    const uid = user?.uid;
-    const [announcementData, bookingData, choreData] = await Promise.all([
-      listAnnouncements(),
-      listUsersBookings(),
-      uid ? listChoresForUser(uid) : Promise.resolve([]),
-    ]);
-    setAnnouncements(announcementData as Announcement[]);
-    setBookings(bookingData as Booking[]);
-    setChores(choreData as ChoreRow[]);
-  }, [user?.uid]);
+    const data = await listAnnouncements();
+    setAnnouncements(data as Announcement[]);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -90,13 +43,6 @@ export default function UserDashboard() {
     };
     load();
   }, [fetchHomeData]);
-
-  const upcomingBookings = useMemo(() => {
-    const now = new Date();
-    return bookings
-      .filter((booking) => toDate(booking.checkIn) >= now)
-      .sort((a, b) => toDate(a.checkIn).getTime() - toDate(b.checkIn).getTime());
-  }, [bookings]);
 
   const handleRefresh = async () => {
     try {
@@ -112,227 +58,216 @@ export default function UserDashboard() {
     router.replace('/');
   };
 
+  const goToPage = (path: '/bookings' | '/chores' | '/feedback') => {
+    setMenuOpen(false);
+    router.push(path);
+  };
+
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[styles.screen, styles.center]}>
         <ActivityIndicator />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.outerScroll}
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Home</Text>
+    <View style={styles.screen}>
+      <View style={styles.cardContainer}>
+        {/* BURGER MENU */}
+        <Pressable style={styles.menuButton} onPress={() => setMenuOpen(!menuOpen)}>
+          <Text style={styles.menuText}>☰</Text>
+        </Pressable>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Announcements</Text>
-          {announcements.length === 0 ? (
-            <Text style={styles.emptyText}>No announcements yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {announcements.map((announcement) => (
-                <View key={announcement.id} style={styles.card}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {announcement.title}
-                  </Text>
-                  {!!announcement.description && (
-                    <Text style={styles.cardDescription} numberOfLines={2}>
-                      {announcement.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {(announcement.category ?? 'general').toUpperCase()} • Due{' '}
-                    {toDate(announcement.dueDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
+        {menuOpen && (
+          <View style={styles.dropdown}>
+            <Pressable style={styles.dropdownItem} onPress={() => goToPage('/bookings')}>
+              <Text style={styles.dropdownText}>Bookings</Text>
+            </Pressable>
+
+            <Pressable style={styles.dropdownItem} onPress={() => goToPage('/chores')}>
+              <Text style={styles.dropdownText}>Chores</Text>
+            </Pressable>
+
+            <Pressable style={styles.dropdownItem} onPress={() => goToPage('/feedback')}>
+              <Text style={styles.dropdownText}>Feedback</Text>
+            </Pressable>
+
+            <Pressable style={styles.dropdownItem} onPress={handleLogout}>
+              <Text style={[styles.dropdownText, styles.logoutText]}>Log Out</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.appTitle}>Village Hub</Text>
+          <Text style={styles.welcome}>
+            Welcome back, <Text style={styles.bold}>User!</Text>
+          </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your chores</Text>
-          {chores.length === 0 ? (
-            <Text style={styles.emptyText}>No chores assigned to you yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {chores.map((c) => (
-                <View key={c.id} style={styles.card}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {c.title}
-                  </Text>
-                  {!!c.description && (
-                    <Text style={styles.cardDescription} numberOfLines={4}>
-                      {c.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {(c.site ?? '—') +
-                      (c.isCompleted !== undefined ? ` • ${c.isCompleted ? 'Done' : 'To do'}` : '')}
-                    {c.dueDate
-                      ? ` • Due ${toDate(c.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                      : ''}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {/* CONTENT */}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.dashboardCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardHeaderText}>New Announcements</Text>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming bookings</Text>
-          {upcomingBookings.length === 0 ? (
-            <Text style={styles.emptyText}>No upcoming bookings.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {upcomingBookings.map((booking) => (
-                <View key={booking.id} style={styles.card}>
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {booking.title}
-                    </Text>
-                    <Text style={[styles.badge, booking.approved ? styles.badgeApproved : styles.badgePending]}>
-                      {booking.approved ? 'Approved' : 'Pending'}
-                    </Text>
+            <View style={styles.cardBody}>
+              {announcements.length === 0 ? (
+                <Text style={styles.emptyText}>No announcements yet.</Text>
+              ) : (
+                announcements.slice(0, 3).map((item) => (
+                  <View key={item.id} style={styles.announcementItem}>
+                    <Text style={styles.announcementTitle}>{item.title}</Text>
+                    {!!item.description && (
+                      <Text style={styles.announcementDescription}>{item.description}</Text>
+                    )}
                   </View>
-                  <Text style={styles.cardDescription} numberOfLines={2}>
-                    {(booking.site ?? 'Unknown site')} • {booking.reservedSpot ?? 'Unknown spot'}
-                  </Text>
-                  <Text style={styles.cardMeta}>
-                    Check-in {toDate(booking.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      </ScrollView>
+                ))
+              )}
+            </View>
+          </View>
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Log Out</Text>
-      </Pressable>
+          <View style={styles.dashboardCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardHeaderText}>Personal Calendar</Text>
+            </View>
+
+            <View style={styles.cardBody}>
+              <Text style={styles.emptyText}>No upcoming events.</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f9fdbfff',
+  screen: {
     flex: 1,
+    backgroundColor: '#FBE9A6',
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  outerScroll: {
+  cardContainer: {
     flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    gap: 14,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#1A1A18',
-  },
-  section: {
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A18',
-  },
-  cappedScroll: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E6E5E0',
-    backgroundColor: '#FAFAF8',
-  },
-  cappedScrollContent: {
-    padding: 10,
-    gap: 8,
-  },
-  card: {
     backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginVertical: 10,
     borderRadius: 12,
+    paddingTop: 20,
+  },
+
+  menuButton: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    zIndex: 20,
+  },
+  menuText: {
+    fontSize: 26,
+    color: '#007C83',
+    fontWeight: '700',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#ECEBE7',
-    padding: 12,
-    gap: 6,
+    borderColor: '#D8D8D8',
+    width: 160,
+    zIndex: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
   },
-  cardTitle: {
-    flex: 1,
+  dropdownText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1A1A18',
+    color: '#007C83',
   },
-  cardDescription: {
-    color: '#61605B',
-    fontSize: 13,
+  logoutText: {
+    color: '#B91C1C',
   },
-  cardMeta: {
-    color: '#898780',
-    fontSize: 12,
+
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
-  badge: {
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 11,
-    fontWeight: '600',
+  logo: {
+    width: 80,
+    height: 80,
   },
-  badgeApproved: {
-    color: '#205A30',
-    backgroundColor: '#E3F2DA',
+  appTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#007C83',
   },
-  badgePending: {
-    color: '#825102',
-    backgroundColor: '#F9EFD9',
+  welcome: {
+    fontSize: 20,
+    color: '#007C83',
+    marginTop: 8,
   },
-  emptyText: {
-    color: '#7F7D75',
-    paddingVertical: 4,
+  bold: {
+    fontWeight: '700',
   },
-  button: {
-    backgroundColor: '#b91c1c',
-    margin: 20,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
+  content: {
+    paddingHorizontal: 40,
+    paddingBottom: 30,
+    gap: 30,
+  },
+  dashboardCard: {
+    backgroundColor: '#E8E6E6',
     borderRadius: 10,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  cardHeader: {
+    backgroundColor: '#C9C7C7',
+    padding: 12,
     alignItems: 'center',
   },
-  buttonText: {
-    color: 'white',
+  cardHeaderText: {
     fontWeight: '700',
+    fontSize: 18,
+  },
+  cardBody: {
+    padding: 18,
+    minHeight: 150,
+  },
+  announcementItem: {
+    marginBottom: 10,
+  },
+  announcementTitle: {
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  announcementDescription: {
+    color: '#555',
+    fontSize: 14,
+  },
+  emptyText: {
+    color: '#777',
+    fontSize: 15,
   },
 });
