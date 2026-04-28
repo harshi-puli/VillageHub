@@ -34,12 +34,20 @@ type Booking = {
   checkOut: any;
   approved: boolean;
   type: string;
+  timeSlot?: string;
   category: string;
   isCompleted: boolean;
   createdAt: any;
 };
 
 type TabKey = 'all' | 'pending' | 'approved';
+
+const TIME_SLOTS = [
+  'Morning (8AM – 12PM)',
+  'Afternoon (12PM – 4PM)',
+  'Evening (4PM – 8PM)',
+  'Full Day (8AM – 8PM)',
+] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -115,12 +123,13 @@ export default function Bookings() {
   const [typesLoading, setTypesLoading] = useState(false);
 
   // Form state
-  const [fTitle, setFTitle]     = useState('');
-  const [fRoom, setFRoom]       = useState('');
-  const [fType, setFType]       = useState('');
-  const [fDesc, setFDesc]       = useState('');
-  const [fCheckIn, setFCheckIn]   = useState('');
-  const [fCheckOut, setFCheckOut] = useState('');
+  const [fTitle, setFTitle]         = useState('');
+  const [fRoom, setFRoom]           = useState('');
+  const [fType, setFType]           = useState('');
+  const [fTimeSlot, setFTimeSlot]   = useState('');
+  const [fDesc, setFDesc]           = useState('');
+  const [fCheckIn, setFCheckIn]     = useState('');
+  const [fCheckOut, setFCheckOut]   = useState('');
 
   const roomOptions = [...new Set(bookables.map((b) => b.name))].sort();
 
@@ -169,8 +178,8 @@ export default function Bookings() {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleAdd = async () => {
-    if (!fTitle.trim() || !fRoom || !fType || !fCheckIn || !fCheckOut) {
-      Alert.alert('Required', 'Please fill in Title, Room, Type, and both dates.');
+    if (!fTitle.trim() || !fRoom || !fType || !fTimeSlot || !fCheckIn || !fCheckOut) {
+      Alert.alert('Required', 'Please fill in Title, Room, Type, Time Slot, and both dates.');
       return;
     }
     const checkIn  = new Date(fCheckIn  + 'T12:00:00');
@@ -187,7 +196,7 @@ export default function Bookings() {
       setSubmitting(true);
       let isDuplicate = false;
       try {
-        isDuplicate = await checkExactBookingConflict(fRoom, checkIn, checkOut);
+        isDuplicate = await checkExactBookingConflict(fRoom, checkIn, checkOut, fTimeSlot);
       } catch {
         // If the conflict check fails (e.g. Firestore rules), proceed anyway
       }
@@ -211,6 +220,7 @@ export default function Bookings() {
         checkOut,
         approved:     false,
         type:         fType,
+        timeSlot:     fTimeSlot,
       });
       closeModal();
       fetchBookings();
@@ -259,7 +269,7 @@ export default function Bookings() {
   };
 
   const openModal = () => {
-    setFTitle(''); setFRoom(''); setFType(''); setFDesc('');
+    setFTitle(''); setFRoom(''); setFType(''); setFTimeSlot(''); setFDesc('');
     setTypes([]);
     setFCheckIn(new Date().toISOString().slice(0, 10));
     setFCheckOut(new Date().toISOString().slice(0, 10));
@@ -293,6 +303,12 @@ export default function Bookings() {
             <View style={styles.metaPill}>
               <Ionicons name="pricetag-outline" size={11} color="#5F5E5A" />
               <Text style={styles.metaPillText}>{b.type}</Text>
+            </View>
+          )}
+          {!!b.timeSlot && (
+            <View style={styles.metaPill}>
+              <Ionicons name="time-outline" size={11} color="#5F5E5A" />
+              <Text style={styles.metaPillText}>{b.timeSlot}</Text>
             </View>
           )}
         </View>
@@ -406,6 +422,14 @@ export default function Bookings() {
                   onSelect={setFType}
                 />
               )}
+
+              <Text style={styles.fieldLabel}>Time Slot *</Text>
+              <Dropdown
+                placeholder="Select a time slot"
+                value={fTimeSlot}
+                options={[...TIME_SLOTS]}
+                onSelect={setFTimeSlot}
+              />
 
               <Text style={styles.fieldLabel}>Description</Text>
               <TextInput
