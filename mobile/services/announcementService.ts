@@ -16,18 +16,19 @@ import { auth, db } from '@/firebase';
 export type AnnouncementInput = {
   title: string;
   description?: string;
-  dueDate: Date;
   category?: string;
+  releaseDate: Date;
+  site?: string;
 };
 
-/** Partial fields when updating */
+/** Partial fields when updating an announcement */
 export type AnnouncementUpdates = {
   title?: string;
   description?: string;
-  dueDate?: Date;
   category?: string;
-  isCompleted?: boolean;
-  notified?: boolean;
+  releaseDate?: Date;
+  site?: string;
+  emailSent?: boolean;
 };
 
 function requireSignedInUid(): string {
@@ -45,27 +46,34 @@ export function handleImageClick(): void {
 
 /**
  * Create an announcement in the top-level `announcements` collection.
- * Adds `createdByUid` when a user is logged in.
+ *
+ * Important: SendGrid should NOT be called directly from this frontend file,
+ * because that would expose the SendGrid API key in the browser.
+ * Instead, this creates the Firestore document with emailSent: false.
+ * A backend function / Firebase Cloud Function should watch for new
+ * announcements and send the email through SendGrid.
  */
 export const addAnnouncement = async (announcementData: AnnouncementInput) => {
+  const userId = requireSignedInUid();
+
   const announcement = {
     title: announcementData.title.trim(),
     description: (announcementData.description ?? '').trim(),
-    dueDate: Timestamp.fromDate(announcementData.dueDate),
     category: (announcementData.category ?? 'general').trim() || 'general',
-    isCompleted: false,
+    user: userId,
     createdAt: serverTimestamp(),
-    notified: false,
-    ...(auth.currentUser?.uid ? { createdByUid: auth.currentUser.uid } : {}),
+    releaseDate: Timestamp.fromDate(announcementData.releaseDate),
+    site: (announcementData.site ?? 'TVS').trim() || 'TVS',
+    emailSent: false,
   };
 
   const docRef = await addDoc(collection(db, 'announcements'), announcement);
 
   return { id: docRef.id, ...announcement };
-}; 
+};
 
 /**
- * Update an announcement by id (same collection as `addAnnouncement`).
+ * Update an announcement by id.
  */
 export const updateAnnouncement = async (
   announcementId: string,
@@ -77,12 +85,18 @@ export const updateAnnouncement = async (
 
   if (updates.title !== undefined) payload.title = updates.title.trim();
   if (updates.description !== undefined) payload.description = updates.description.trim();
-  if (updates.dueDate !== undefined) payload.dueDate = Timestamp.fromDate(updates.dueDate);
   if (updates.category !== undefined) {
     payload.category = updates.category.trim() || 'general';
   }
-  if (updates.isCompleted !== undefined) payload.isCompleted = updates.isCompleted;
-  if (updates.notified !== undefined) payload.notified = updates.notified;
+  if (updates.releaseDate !== undefined) {
+    payload.releaseDate = Timestamp.fromDate(updates.releaseDate);
+  }
+  if (updates.site !== undefined) {
+    payload.site = updates.site.trim() || 'TVS';
+  }
+  if (updates.emailSent !== undefined) {
+    payload.emailSent = updates.emailSent;
+  }
 
   if (Object.keys(payload).length === 0) {
     return { id: announcementId };
@@ -94,7 +108,7 @@ export const updateAnnouncement = async (
 };
 
 /**
- * Delete an announcement by id (same collection as `addAnnouncement`).
+ * Delete an announcement by id.
  */
 export const deleteAnnouncement = async (announcementId: string): Promise<string> => {
   requireSignedInUid();
@@ -103,7 +117,7 @@ export const deleteAnnouncement = async (announcementId: string): Promise<string
 };
 
 /**
- * List announcements newest first. Requires a Firestore index on `createdAt` if you use this at scale.
+ * List announcements newest first.
  */
 export const listAnnouncements = async () => {
   const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
