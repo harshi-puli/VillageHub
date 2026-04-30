@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+#expo-env.d.ts
+expo-env.d.ts

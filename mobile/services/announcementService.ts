@@ -109,4 +109,4 @@ export const listAnnouncements = async () => {
   const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-};
+}; 
