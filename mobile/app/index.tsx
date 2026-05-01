@@ -269,9 +269,6 @@ export default function LoginScreen() {
             </Pressable>
           </View>
 
-          <Pressable style={styles.guestLink}>
-            <Text style={styles.guestText}>Continue as a guest</Text>
-          </Pressable>
         </Animated.View>
       </View>
     );

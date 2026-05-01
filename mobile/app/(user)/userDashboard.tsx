@@ -97,7 +97,7 @@ function ItemCard({ children }: { children: React.ReactNode }) {
 }
 
 export default function UserDashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [chores, setChores] = useState<ChoreRow[]>([]);
@@ -165,8 +165,11 @@ export default function UserDashboard() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.welcomeText}>
-            Welcome back, <Text style={styles.welcomeBold}>User!</Text>
+            Welcome, <Text style={styles.welcomeBold}>{profile?.name ?? 'User'}!</Text>
           </Text>
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
+          </Pressable>
         </View>
 
         {/* New Announcements */}
@@ -230,10 +233,6 @@ export default function UserDashboard() {
 
       </ScrollView>
 
-      {/* Logout button — always visible at the bottom */}
-      <Pressable style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </Pressable>
     </View>
   );
 }
@@ -251,8 +250,9 @@ const styles = StyleSheet.create({
 
   // header
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 4,
     marginBottom: 8,
   },
   headerLogo: {
@@ -266,9 +266,9 @@ const styles = StyleSheet.create({
     color: DARK_TEAL,
   },
   welcomeText: {
-    fontSize: 30,
+    fontSize: 22,
     color: TEAL,
-    marginTop: 2,
+    flexShrink: 1,
   },
   welcomeBold: {
     fontWeight: '800',
@@ -350,19 +350,13 @@ const styles = StyleSheet.create({
   // logout
   logoutBtn: {
     backgroundColor: TEAL,
-    margin: 20,
-    paddingVertical: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 999,
-    alignItems: 'center',
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
   logoutText: {
     color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
+    fontWeight: '700',
+    fontSize: 13,
   },
 });
