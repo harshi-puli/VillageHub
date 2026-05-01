@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Timestamp } from 'firebase/firestore';
@@ -15,6 +16,10 @@ import { listAnnouncements } from '@/services/announcementService';
 import { listChoresForUser } from '@/services/choreService';
 import { listUsersBookings } from '@/services/roomBookingService';
 import { useAuth } from '@/state/auth';
+
+const TEAL = '#1a7a6e';
+const DARK_TEAL = '#0f5a51';
+const GRAY_BOX = '#e8e8e8';
 
 type Announcement = {
   id: string;
@@ -43,7 +48,8 @@ type ChoreRow = {
 };
 
 const MAX_VISIBLE_ITEMS = 3;
-const ROW_HEIGHT_PX = 118;
+const ROW_HEIGHT_PX = 110;
+const cappedScrollMaxHeight = MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
 
 const toDate = (value?: { seconds?: number } | Date | Timestamp): Date => {
   if (!value) return new Date(0);
@@ -55,7 +61,40 @@ const toDate = (value?: { seconds?: number } | Date | Timestamp): Date => {
   return new Date(0);
 };
 
-const cappedScrollMaxHeight = MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
+// Gray bubbly section box with inner ScrollView
+function SectionBox({
+  title,
+  children,
+  empty,
+}: {
+  title: string;
+  children?: React.ReactNode;
+  empty?: boolean;
+}) {
+  return (
+    <View style={styles.sectionBox}>
+      <Text style={styles.sectionBoxTitle}>{title}</Text>
+      {empty ? (
+        <View style={styles.sectionBoxBody}>
+          <View style={styles.emptyCard} />
+        </View>
+      ) : (
+        <ScrollView
+          style={[styles.sectionBoxBody, { maxHeight: cappedScrollMaxHeight }]}
+          contentContainerStyle={{ gap: 8, paddingBottom: 2 }}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+// White card inside a section
+function ItemCard({ children }: { children: React.ReactNode }) {
+  return <View style={styles.itemCard}>{children}</View>;
+}
 
 export default function UserDashboard() {
   const { user } = useAuth();
@@ -66,57 +105,40 @@ export default function UserDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHomeData = useCallback(async () => {
-    // Guard: if there's no user, don't touch any auth-gated service
     if (!user?.uid) return;
-
     const [announcementResult, bookingResult, choreResult] = await Promise.allSettled([
       listAnnouncements(),
       listUsersBookings(),
       listChoresForUser(user.uid),
     ]);
     if (announcementResult.status === 'fulfilled') setAnnouncements(announcementResult.value as Announcement[]);
-    if (bookingResult.status === 'fulfilled')      setBookings(bookingResult.value as Booking[]);
-    if (choreResult.status === 'fulfilled')        setChores(choreResult.value as ChoreRow[]);
+    if (bookingResult.status === 'fulfilled') setBookings(bookingResult.value as Booking[]);
+    if (choreResult.status === 'fulfilled') setChores(choreResult.value as ChoreRow[]);
   }, [user?.uid]);
 
   useEffect(() => {
-    // Don't attempt load if signed out
-    if (!user?.uid) {
-      setLoading(false);
-      return;
-    }
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        await fetchHomeData();
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    if (!user?.uid) { setLoading(false); return; }
+    (async () => {
+      try { setLoading(true); await fetchHomeData(); }
+      finally { setLoading(false); }
+    })();
   }, [fetchHomeData, user?.uid]);
 
   const upcomingBookings = useMemo(() => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     return bookings
-      .filter((booking) => toDate(booking.checkIn) >= startOfToday)
+      .filter((b) => toDate(b.checkIn) >= startOfToday)
       .sort((a, b) => toDate(a.checkIn).getTime() - toDate(b.checkIn).getTime());
   }, [bookings]);
 
   const handleRefresh = async () => {
     if (!user?.uid) return;
-    try {
-      setRefreshing(true);
-      await fetchHomeData();
-    } finally {
-      setRefreshing(false);
-    }
+    try { setRefreshing(true); await fetchHomeData(); }
+    finally { setRefreshing(false); }
   };
 
   const handleLogout = async () => {
-    // Clear local state before signing out so no re-fetch is triggered
     setAnnouncements([]);
     setBookings([]);
     setChores([]);
@@ -127,7 +149,7 @@ export default function UserDashboard() {
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator />
+        <ActivityIndicator color={TEAL} size="large" />
       </View>
     );
   }
@@ -137,164 +159,153 @@ export default function UserDashboard() {
       <ScrollView
         style={styles.outerScroll}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={TEAL} />}
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Home</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Announcements</Text>
-          {announcements.length === 0 ? (
-            <Text style={styles.emptyText}>No announcements yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {announcements.map((announcement) => (
-                <View key={announcement.id} style={styles.card}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {announcement.title}
-                  </Text>
-                  {!!announcement.description && (
-                    <Text style={styles.cardDescription} numberOfLines={2}>
-                      {announcement.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {(announcement.category ?? 'general').toUpperCase()} • Due{' '}
-                    {toDate(announcement.dueDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.welcomeText}>
+            Welcome back, <Text style={styles.welcomeBold}>User!</Text>
+          </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your chores</Text>
-          {chores.length === 0 ? (
-            <Text style={styles.emptyText}>No chores assigned to you yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {chores.map((c) => (
-                <View key={c.id} style={styles.card}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {c.title}
-                  </Text>
-                  {!!c.description && (
-                    <Text style={styles.cardDescription} numberOfLines={4}>
-                      {c.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {(c.site ?? '—') +
-                      (c.isCompleted !== undefined ? ` • ${c.isCompleted ? 'Done' : 'To do'}` : '')}
-                    {c.dueDate
-                      ? ` • Due ${toDate(c.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                      : ''}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {/* New Announcements */}
+        <SectionBox title="Announcements" empty={announcements.length === 0}>
+          {announcements.map((a) => (
+            <ItemCard key={a.id}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
+              {!!a.description && (
+                <Text style={styles.cardDesc} numberOfLines={2}>{a.description}</Text>
+              )}
+              <Text style={styles.cardMeta}>
+                {(a.category ?? 'general').toUpperCase()} • Due{' '}
+                {toDate(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            </ItemCard>
+          ))}
+        </SectionBox>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming bookings</Text>
-          {upcomingBookings.length === 0 ? (
-            <Text style={styles.emptyText}>No upcoming bookings.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {upcomingBookings.map((booking) => (
-                <View key={booking.id} style={styles.card}>
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {booking.title}
-                    </Text>
-                    <Text style={[styles.badge, booking.approved ? styles.badgeApproved : styles.badgePending]}>
-                      {booking.approved ? 'Approved' : 'Pending'}
-                    </Text>
-                  </View>
-                  <Text style={styles.cardDescription} numberOfLines={2}>
-                    {(booking.site ?? 'Unknown site')} • {booking.reservedSpot ?? 'Unknown spot'}
+        {/*  Chores */}
+        <SectionBox title="My Chores" empty={chores.length === 0}>
+          {chores.map((c) => (
+            <ItemCard key={c.id}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{c.title}</Text>
+                {c.isCompleted !== undefined && (
+                  <Text style={[styles.badge, c.isCompleted ? styles.badgeDone : styles.badgeOpen]}>
+                    {c.isCompleted ? 'Done' : 'To do'}
                   </Text>
-                  <Text style={styles.cardMeta}>
-                    Check-in {toDate(booking.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+                )}
+              </View>
+              {!!c.description && (
+                <Text style={styles.cardDesc} numberOfLines={2}>{c.description}</Text>
+              )}
+              <Text style={styles.cardMeta}>
+                {c.site ?? '—'}
+                {c.dueDate ? ` • Due ${toDate(c.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+              </Text>
+            </ItemCard>
+          ))}
+        </SectionBox>
+
+        {/* Upcoming Bookings */}
+        <SectionBox title="Upcoming Bookings" empty={upcomingBookings.length === 0}>
+          {upcomingBookings.map((b) => (
+            <ItemCard key={b.id}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{b.title}</Text>
+                <Text style={[styles.badge, b.approved ? styles.badgeDone : styles.badgeOpen]}>
+                  {b.approved ? 'Approved' : 'Pending'}
+                </Text>
+              </View>
+              <Text style={styles.cardDesc} numberOfLines={1}>
+                {b.site ?? 'Unknown site'} • {b.reservedSpot ?? 'Unknown spot'}
+              </Text>
+              <Text style={styles.cardMeta}>
+                Check-in {toDate(b.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            </ItemCard>
+          ))}
+        </SectionBox>
+
       </ScrollView>
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Log Out</Text>
+      {/* Logout button — always visible at the bottom */}
+      <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Log Out</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F8F8F6',
-    flex: 1,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  outerScroll: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  center: { justifyContent: 'center', alignItems: 'center' },
+  outerScroll: { flex: 1 },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    gap: 14,
+    paddingTop: 56,
+    paddingBottom: 16,
+    gap: 20,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#1A1A18',
+
+  // header
+  header: {
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
   },
-  section: {
-    gap: 8,
+  headerLogo: {
+    width: 64,
+    height: 64,
+    resizeMode: 'contain',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A18',
+  brandName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: DARK_TEAL,
   },
-  cappedScroll: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E6E5E0',
-    backgroundColor: '#FAFAF8',
+  welcomeText: {
+    fontSize: 30,
+    color: TEAL,
+    marginTop: 2,
   },
-  cappedScrollContent: {
+  welcomeBold: {
+    fontWeight: '800',
+    color: TEAL,
+  },
+
+  // gray bubbly section box
+  sectionBox: {
+    backgroundColor: GRAY_BOX,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  sectionBoxTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  sectionBoxBody: {
     padding: 10,
-    gap: 8,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ECEBE7',
-    padding: 12,
-    gap: 6,
+  emptyCard: {
+    height: 80,
+  },
+
+  // white item card
+  itemCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -304,47 +315,54 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A18',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
-  cardDescription: {
-    color: '#61605B',
+  cardDesc: {
     fontSize: 13,
+    color: '#555',
   },
   cardMeta: {
-    color: '#898780',
-    fontSize: 12,
-  },
-  badge: {
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     fontSize: 11,
-    fontWeight: '600',
+    color: '#999',
+    fontWeight: '500',
   },
-  badgeApproved: {
-    color: '#205A30',
-    backgroundColor: '#E3F2DA',
+
+  // badges
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    overflow: 'hidden',
   },
-  badgePending: {
+  badgeOpen: {
     color: '#825102',
     backgroundColor: '#F9EFD9',
   },
-  emptyText: {
-    color: '#7F7D75',
-    paddingVertical: 4,
+  badgeDone: {
+    color: '#205A30',
+    backgroundColor: '#E3F2DA',
   },
-  button: {
-    backgroundColor: '#b91c1c',
+
+  // logout
+  logoutBtn: {
+    backgroundColor: TEAL,
     margin: 20,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 999,
     alignItems: 'center',
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: '700',
+  logoutText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
   },
 });

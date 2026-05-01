@@ -326,14 +326,6 @@ export default function LoginScreen() {
             </Animated.View>
           </Pressable>
 
-          <Divider label={isLogin ? 'Or Login With' : 'Or Signup With'} />
-
-          <View style={styles.googleRow}>
-            <Pressable style={styles.googleBtn}>
-              <Text style={styles.googleG}>G</Text>
-            </Pressable>
-          </View>
-
           <Pressable
             style={styles.switchRow}
             onPress={() => { setScreen(isLogin ? 'signup' : 'login'); setError(''); }}>
