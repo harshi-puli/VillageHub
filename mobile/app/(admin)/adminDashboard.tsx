@@ -7,17 +7,20 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
-  Image,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { logoutResident } from '@/services/authService';
-import { listAnnouncements } from '@/services/announcementService';
+import { useAuth } from '@/state/auth';
+import { addAnnouncement, listAnnouncements } from '@/services/announcementService';
 import { listFeedback } from '@/services/feedbackService';
 
 const TEAL = '#1a7a6e';
-const DARK_TEAL = '#0f5a51';
 const GRAY_BOX = '#e8e8e8';
-const CARD_BG = '#f2f2f2';
 
 type Announcement = {
   id: string;
@@ -55,14 +58,23 @@ function SectionBox({
   title,
   children,
   empty,
+  onAdd,
 }: {
   title: string;
   children?: React.ReactNode;
   empty?: boolean;
+  onAdd?: () => void;
 }) {
   return (
     <View style={styles.sectionBox}>
-      <Text style={styles.sectionBoxTitle}>{title}</Text>
+      <View style={styles.sectionBoxHeader}>
+        <Text style={styles.sectionBoxTitle}>{title}</Text>
+        {onAdd && (
+          <Pressable style={styles.addBtn} onPress={onAdd}>
+            <Text style={styles.addBtnText}>+ Add</Text>
+          </Pressable>
+        )}
+      </View>
       {empty ? (
         <View style={[styles.sectionBoxBody, { gap: 0 }]}>
           <View style={styles.emptyCard} />
@@ -86,10 +98,17 @@ function ItemCard({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminDashboard() {
+  const { profile } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [newSite, setNewSite] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const fetchHomeData = useCallback(async () => {
     const [announcementData, feedbackData] = await Promise.all([
       listAnnouncements(),
@@ -124,6 +143,37 @@ export default function AdminDashboard() {
     router.replace('/');
   };
 
+  const openModal = () => {
+    setNewTitle('');
+    setNewDescription('');
+    setNewCategory('');
+    setNewSite('');
+    setShowModal(true);
+  };
+
+  const handleAddAnnouncement = async () => {
+    if (!newTitle.trim()) {
+      Alert.alert('Title required', 'Please enter a title for the announcement.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await addAnnouncement({
+        title: newTitle.trim(),
+        description: newDescription.trim(),
+        category: newCategory.trim() || 'general',
+        site: newSite.trim() || 'TVS',
+        releaseDate: new Date(),
+      });
+      setShowModal(false);
+      await fetchHomeData();
+    } catch {
+      Alert.alert('Error', 'Failed to add announcement. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -144,25 +194,16 @@ export default function AdminDashboard() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerCenter}>
-            <Image
-              source={require('@/assets/images/logo.png')}
-              style={styles.headerLogo}
-            />
-            <Text style={styles.brandName}>Village Hub</Text>
-            <Text style={styles.welcomeText}>
-              Welcome back, <Text style={styles.welcomeBold}>Admin!</Text>
-            </Text>
-          </View>
-          <Pressable style={styles.hamburger}>
-            <View style={styles.hLine} />
-            <View style={styles.hLine} />
-            <View style={styles.hLine} />
+          <Text style={styles.welcomeText}>
+            Welcome, <Text style={styles.welcomeBold}>{profile?.name ?? 'Admin'}!</Text>
+          </Text>
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </Pressable>
         </View>
 
         {/* Public Calendar */}
-        <SectionBox title="Public Calendar" empty={announcements.length === 0}>
+        <SectionBox title="Public Calendar" empty={announcements.length === 0} onAdd={openModal}>
           {announcements.map((a) => (
             <ItemCard key={a.id}>
               <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
@@ -199,9 +240,59 @@ export default function AdminDashboard() {
 
       </ScrollView>
 
-      <Pressable style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </Pressable>
+      {/* Add Announcement Modal */}
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowModal(false)} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalSheet}>
+          <Text style={styles.modalTitle}>New Announcement</Text>
+
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Title *"
+            placeholderTextColor="#aaa"
+            value={newTitle}
+            onChangeText={setNewTitle}
+            editable={!submitting}
+          />
+          <TextInput
+            style={[styles.modalInput, styles.modalInputMulti]}
+            placeholder="Description (optional)"
+            placeholderTextColor="#aaa"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            multiline
+            editable={!submitting}
+          />
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Category (default: general)"
+            placeholderTextColor="#aaa"
+            value={newCategory}
+            onChangeText={setNewCategory}
+            editable={!submitting}
+          />
+          <TextInput
+            style={styles.modalInput}
+            placeholder="Site (default: TVS)"
+            placeholderTextColor="#aaa"
+            value={newSite}
+            onChangeText={setNewSite}
+            editable={!submitting}
+          />
+
+          <View style={styles.modalActions}>
+            <Pressable style={styles.modalCancel} onPress={() => setShowModal(false)} disabled={submitting}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={styles.modalSubmit} onPress={handleAddAnnouncement} disabled={submitting}>
+              {submitting
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.modalSubmitText}>Post</Text>
+              }
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -219,64 +310,32 @@ const styles = StyleSheet.create({
 
   // header
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'relative',
     marginBottom: 8,
   },
-  headerCenter: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  headerLogo: {
-    width: 64,
-    height: 64,
-    resizeMode: 'contain',
-  },
-  brandName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: DARK_TEAL,
-  },
   welcomeText: {
-    fontSize: 15,
+    fontSize: 22,
     color: TEAL,
-    marginTop: 2,
+    flexShrink: 1,
   },
   welcomeBold: {
     fontWeight: '800',
     color: TEAL,
   },
-  hamburger: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    gap: 5,
-    padding: 8,
-  },
-  hLine: {
-    width: 22,
-    height: 2.5,
-    backgroundColor: '#555',
-    borderRadius: 2,
-  },
 
   // logout
   logoutBtn: {
     backgroundColor: TEAL,
-    margin: 20,
-    paddingVertical: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 999,
-    alignItems: 'center',
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
   logoutText: {
     color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
+    fontWeight: '700',
+    fontSize: 13,
   },
 
   // gray bubbly section box
@@ -289,8 +348,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#1a1a1a',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
   },
   sectionBoxBody: {
     padding: 10,
@@ -351,5 +408,86 @@ const styles = StyleSheet.create({
   badgeDone: {
     color: '#205A30',
     backgroundColor: '#E3F2DA',
+  },
+
+  // section box header row
+  sectionBoxHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  addBtn: {
+    backgroundColor: TEAL,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  addBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+
+  // modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: TEAL,
+    marginBottom: 4,
+  },
+  modalInput: {
+    backgroundColor: '#f3f3f3',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  modalInputMulti: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  modalCancel: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: TEAL,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: TEAL,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modalSubmit: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 999,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
