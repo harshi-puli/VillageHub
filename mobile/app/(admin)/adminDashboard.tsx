@@ -7,11 +7,17 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { logoutResident } from '@/services/authService';
 import { listAnnouncements } from '@/services/announcementService';
 import { listFeedback } from '@/services/feedbackService';
+
+const TEAL = '#1a7a6e';
+const DARK_TEAL = '#0f5a51';
+const GRAY_BOX = '#e8e8e8';
+const CARD_BG = '#f2f2f2';
 
 type Announcement = {
   id: string;
@@ -32,10 +38,6 @@ type FeedbackItem = {
   createdAt?: { seconds?: number } | Date;
 };
 
-const MAX_VISIBLE_ITEMS = 3; 
-const ROW_HEIGHT_PX = 118;
-const cappedScrollMaxHeight =  MAX_VISIBLE_ITEMS * ROW_HEIGHT_PX;
-
 const toDate = (value?: { seconds?: number } | Date): Date => {
   if (!value) return new Date(0);
   if (value instanceof Date) return value;
@@ -48,12 +50,46 @@ function formatCreatedAt(value: FeedbackItem['createdAt']) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Gray bubbly section box
+function SectionBox({
+  title,
+  children,
+  empty,
+}: {
+  title: string;
+  children?: React.ReactNode;
+  empty?: boolean;
+}) {
+  return (
+    <View style={styles.sectionBox}>
+      <Text style={styles.sectionBoxTitle}>{title}</Text>
+      {empty ? (
+        <View style={[styles.sectionBoxBody, { gap: 0 }]}>
+          <View style={styles.emptyCard} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.sectionBoxBody}
+          contentContainerStyle={{ gap: 8, paddingBottom: 2 }}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+// White card inside a section
+function ItemCard({ children }: { children: React.ReactNode }) {
+  return <View style={styles.itemCard}>{children}</View>;
+}
+
 export default function AdminDashboard() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const fetchHomeData = useCallback(async () => {
     const [announcementData, feedbackData] = await Promise.all([
       listAnnouncements(),
@@ -91,7 +127,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator />
+        <ActivityIndicator color={TEAL} size="large" />
       </View>
     );
   }
@@ -101,126 +137,181 @@ export default function AdminDashboard() {
       <ScrollView
         style={styles.outerScroll}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={TEAL} />
+        }
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Admin home</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Announcements</Text>
-          {announcements.length === 0 ? (
-            <Text style={styles.emptyText}>No announcements yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {announcements.map((a) => (
-                <View key={a.id} style={styles.card}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {a.title}
-                  </Text>
-                  {!!a.description && (
-                    <Text style={styles.cardDescription} numberOfLines={2}>
-                      {a.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {(a.category ?? 'general').toUpperCase()} • Due{' '}
-                    {toDate(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerCenter}>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.headerLogo}
+            />
+            <Text style={styles.brandName}>Village Hub</Text>
+            <Text style={styles.welcomeText}>
+              Welcome back, <Text style={styles.welcomeBold}>Admin!</Text>
+            </Text>
+          </View>
+          <Pressable style={styles.hamburger}>
+            <View style={styles.hLine} />
+            <View style={styles.hLine} />
+            <View style={styles.hLine} />
+          </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent feedback</Text>
-          {feedbackList.length === 0 ? (
-            <Text style={styles.emptyText}>No feedback yet.</Text>
-          ) : (
-            <ScrollView
-              style={[styles.cappedScroll, { maxHeight: cappedScrollMaxHeight }]}
-              contentContainerStyle={styles.cappedScrollContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator>
-              {feedbackList.map((f) => (
-                <View key={f.id} style={styles.card}>
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {f.title}
-                    </Text>
-                    <Text style={[styles.badge, f.isCompleted ? styles.badgeDone : styles.badgeOpen]}>
-                      {f.isCompleted ? 'Done' : f.status ?? 'Pending'}
-                    </Text>
-                  </View>
-                  {!!f.description && (
-                    <Text style={styles.cardDescription} numberOfLines={2}>
-                      {f.description}
-                    </Text>
-                  )}
-                  <Text style={styles.cardMeta}>
-                    {f.site ?? '—'} • {f.category ?? 'general'} • {formatCreatedAt(f.createdAt)}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {/* Public Calendar */}
+        <SectionBox title="Public Calendar" empty={announcements.length === 0}>
+          {announcements.map((a) => (
+            <ItemCard key={a.id}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{a.title}</Text>
+              {!!a.description && (
+                <Text style={styles.cardDesc} numberOfLines={2}>{a.description}</Text>
+              )}
+              <Text style={styles.cardMeta}>
+                {(a.category ?? 'general').toUpperCase()} • Due{' '}
+                {toDate(a.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            </ItemCard>
+          ))}
+        </SectionBox>
+
+        {/* New Feedback / Requests */}
+        <SectionBox title="New Feedback/Requests" empty={feedbackList.length === 0}>
+          {feedbackList.map((f) => (
+            <ItemCard key={f.id}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{f.title}</Text>
+                <Text style={[styles.badge, f.isCompleted ? styles.badgeDone : styles.badgeOpen]}>
+                  {f.isCompleted ? 'Done' : f.status ?? 'Pending'}
+                </Text>
+              </View>
+              {!!f.description && (
+                <Text style={styles.cardDesc} numberOfLines={2}>{f.description}</Text>
+              )}
+              <Text style={styles.cardMeta}>
+                {f.site ?? '—'} • {f.category ?? 'general'} • {formatCreatedAt(f.createdAt)}
+              </Text>
+            </ItemCard>
+          ))}
+        </SectionBox>
+
       </ScrollView>
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Log Out</Text>
+      <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Log Out</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F8F8F6',
-    flex: 1,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  center: { justifyContent: 'center', alignItems: 'center' },
   outerScroll: { flex: 1 },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    gap: 14,
+    paddingTop: 56,
+    paddingBottom: 32,
+    gap: 20,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#1A1A18',
+
+  // header
+  header: {
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 8,
   },
-  section: { gap: 8 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A18',
+  headerCenter: {
+    alignItems: 'center',
+    gap: 4,
   },
-  cappedScroll: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E6E5E0',
-    backgroundColor: '#FAFAF8',
+  headerLogo: {
+    width: 64,
+    height: 64,
+    resizeMode: 'contain',
   },
-  cappedScrollContent: {
+  brandName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: DARK_TEAL,
+  },
+  welcomeText: {
+    fontSize: 15,
+    color: TEAL,
+    marginTop: 2,
+  },
+  welcomeBold: {
+    fontWeight: '800',
+    color: TEAL,
+  },
+  hamburger: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    gap: 5,
+    padding: 8,
+  },
+  hLine: {
+    width: 22,
+    height: 2.5,
+    backgroundColor: '#555',
+    borderRadius: 2,
+  },
+
+  // logout
+  logoutBtn: {
+    backgroundColor: TEAL,
+    margin: 20,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
+  },
+
+  // gray bubbly section box
+  sectionBox: {
+    backgroundColor: GRAY_BOX,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  sectionBoxTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  sectionBoxBody: {
     padding: 10,
     gap: 8,
+    maxHeight: 3 * 110,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ECEBE7',
-    padding: 12,
-    gap: 6,
+  emptyCard: {
+    height: 80,
+  },
+
+  // white item card
+  itemCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -230,24 +321,28 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A18',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
   },
-  cardDescription: {
-    color: '#61605B',
+  cardDesc: {
     fontSize: 13,
+    color: '#555',
   },
   cardMeta: {
-    color: '#898780',
-    fontSize: 12,
-  },
-  badge: {
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     fontSize: 11,
-    fontWeight: '600',
+    color: '#999',
+    fontWeight: '500',
+  },
+
+  // badges
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    overflow: 'hidden',
   },
   badgeOpen: {
     color: '#825102',
@@ -256,21 +351,5 @@ const styles = StyleSheet.create({
   badgeDone: {
     color: '#205A30',
     backgroundColor: '#E3F2DA',
-  },
-  emptyText: {
-    color: '#7F7D75',
-    paddingVertical: 4,
-  },
-  button: {
-    backgroundColor: '#b91c1c',
-    margin: 20,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '700',
   },
 });
